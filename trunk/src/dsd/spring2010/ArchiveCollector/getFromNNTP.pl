@@ -6,37 +6,46 @@
 
 #issues currently takes to long to grab messages. if we are grabbing 
 #100,000 messages then this might be too slow
+#20,000 messages takes 23 minutes
 
 use strict;
+use lib qw(../../../../lib);               # include local references
 use Net::NNTP; 
 use Getopt::Std;
+use DBI;
 
 #initialize global variables
 my $newshost = "lists.mysql.com";          # hard coded news host
 my $nntp = Net::NNTP->new($newshost);      # open connection to news host
 my $grphashref=0;                          # reference to hash table of news groups
 my $printonly=0;                           # global flag to print num. of messages 
+my $dbh;                                   # postgresql db handler 
+my $dbhost="localhost";                    # db hostname
+my $dbport="5432";                         # db port
+my $dbname="test";                         # db name
+my $dbuser="dbuser";                       # db user name
+my $dbpasswd="pswd";                       # db password
 
 # print script usage
 sub Usage {
-  print("\n");
-  print("getFromNNTP.pl [-a | -f <newsgroup file> | -l <newsgroups> ] | [-p]\n");
-  print("\n");
-  print("	connects to NNTP server lists.mysql.com \n");
-  print("	grabs messages from given news groups. \n");
-  print("	requires at least one argument a|f|l \n");
-  print("	-a\n");
-  print("		grabs all available news groups\n");
-  print("	-f <newsgroup file>\n");
-  print("		file containing list of news groups with one on each line\n");
-  print("	-l <newsgroups>\n");
-  print("		list of news groups seperated by spaces within quotes\n");
-  print("	-p\n");
-  print("		print the number of messages for each news group\n");
-  print("\n");
-  print("	note:\n");
-  print("	precedence of arguments (l, f, a)  if one or more are given\n");
-  exit(0);
+    print("\n");
+    print("getFromNNTP.pl [-a | -f <newsgroup file> | -l <newsgroups> ] | [-p]\n");
+    print("\n");
+    print("	connects to NNTP server lists.mysql.com \n");
+    print("	grabs messages from given news groups. \n");
+    print("	requires at least one argument a|f|l \n");
+    print("	-a\n");
+    print("		grabs all available news groups\n");
+    print("	-f <newsgroup file>\n");
+    print("		file containing list of news groups with one on each line\n");
+    print("	-l <newsgroups>\n");
+    print("		list of news groups seperated by spaces within quotes\n");
+    print("	-p\n");
+    print("		print the number of messages for each news group\n");
+    print("\n");
+    print("	note:\n");
+    print("	precedence of arguments (l, f, a)  if one or more are given\n");
+    exit(0);
 }
 
 #given group key and reference to hash table
@@ -91,17 +100,17 @@ sub processGroupArgList {
 #print the group name and number of messages
 #to stdout
 sub doPrint {
-   my ($href) = @_;
+    my ($href) = @_;
 
-   foreach my $curgroup (keys %$href) {
-      my $msglistref = $nntp->listgroup($curgroup);
-      # returns undefined if news group doesn't exist
-      my $numrecs=0;
-      if (defined($msglistref)) {
-         $numrecs=@$msglistref;
-      }
-      print("$curgroup : $numrecs\n"); 
-   }
+    foreach my $curgroup (keys %$href) {
+       my $msglistref = $nntp->listgroup($curgroup);
+       # returns undefined if news group doesn't exist
+       my $numrecs=0;
+       if (defined($msglistref)) {
+          $numrecs=@$msglistref;
+       }
+       print("$curgroup : $numrecs\n"); 
+    }
 }
 
 #given a reference to an array containing 
@@ -112,7 +121,7 @@ sub insertMessage {
     print(@$headerref);
 }
 
-#given a hash table reference, 
+# given a hash table reference, 
 # loop through all news groups and gets the message
 # the messages include the header and body
 # currently runs in (num groups * num messages)
@@ -120,8 +129,9 @@ sub insertMessage {
 # so i'm grabbing each individual message 
 # not sure how much load this puts on the news host but it doesn't 
 # seem the most efficient way to get all the messages
-sub getArchiveMessages {
+sub processArchiveMessages {
     my ($href) = @_;
+    # loop through each group and get the header information
     foreach my $curgroup (keys %$href) {
        my $msglistref = $nntp->listgroup($curgroup);
        # returns undefined if news group doesn't exist
@@ -159,8 +169,16 @@ if ($printonly) {
    # just print the group and number of messages
    doPrint($grphashref);
 } else {
+   # setup db connection
+   ### $dbh = DBI->connect("DBI:PgPP:dbname=$dbname;host=$dbhost;port=$dbport",$dbuser,$dbpasswd);
+
    # process messages
-   getArchiveMessages($grphashref);
+   processArchiveMessages($grphashref);
+
+   # close out db connection if it exists
+   if (defined($dbh)) {
+      $dbh->disconnect;
+   }
 }
 
 #cleanup and disconnect
