@@ -1,4 +1,4 @@
-#!/usr/bin/perl -W
+#!/usr/bin/perl
 
 # built and tested on tux system  (linux x86_64 , perl 5.10)
 # connects news group host and gets header information for a 
@@ -9,10 +9,19 @@
 #20,000 messages takes 23 minutes
 
 use strict;
+use warnings;
 use lib qw(../../../../lib);               # include local references
 use Net::NNTP; 
 use Getopt::Std;
 use DBI;
+
+
+# constants used for header TAGs
+use constant GROUPSTR => 'Newsgroups:';
+use constant DATESTR => 'Date:';
+use constant TOSTR => 'To:';
+use constant SUBJECTSTR => 'Subject:';
+use constant FROMSTR => 'From:';
 
 #initialize global variables
 my $newshost = "lists.mysql.com";          # hard coded news host
@@ -20,11 +29,12 @@ my $nntp = Net::NNTP->new($newshost);      # open connection to news host
 my $grphashref=0;                          # reference to hash table of news groups
 my $printonly=0;                           # global flag to print num. of messages 
 my $dbh;                                   # postgresql db handler 
-my $dbhost="localhost";                    # db hostname
+my $dbhost="wander";                       # db hostname
 my $dbport="5432";                         # db port
-my $dbname="test";                         # db name
+my $dbname="CS680ateam";                   # db name
 my $dbuser="dbuser";                       # db user name
 my $dbpasswd="pswd";                       # db password
+
 
 # print script usage
 sub Usage {
@@ -71,6 +81,7 @@ sub processGroupFile {
     if (-e $thefile) {
        open(GROUPNAMES, $thefile);
        while(my $line = <GROUPNAMES>) {
+            #get rid of newline
             chomp($line);
             #only get non-blank line
             if (length($line) > 0) {
@@ -113,12 +124,155 @@ sub doPrint {
     }
 }
 
-#given a reference to an array containing 
-#header information then insert into db table
+
+# given a perl record of header information 
+# insert into db table
 ### do db work here
-sub insertMessage {
+sub insertRecordToDB {
+    my ($msgrec) = @_;
+    print("GROUP   - $msgrec->{GROUP}\n");
+    print("DATE    - $msgrec->{DATE}\n");
+    print("TO      - $msgrec->{TO}\n");
+    print("FROM    - $msgrec->{FROM}\n");
+    print("SUBJECT - $msgrec->{SUBJECT}\n");
+}
+
+#given string
+#returns true if the line is a tagged line
+#a tagged line is if the first word has :
+sub isTAG {
+    my ($word) = @_;
+    my $retval=0;
+
+    # check if : is last character 
+    my $lastchar = substr($word,length($word)-1);
+    if ($lastchar eq ":") {
+       $retval=1;
+    }
+    return($retval);
+}
+
+#given string
+#returns tag string if it is valid
+#otherwise, return empty string;
+#a tagged line is if the first word has :
+sub getTAG {
+    my ($line) = @_;
+    my ($firstword) = split(/ /,$line);
+    my $retval="";
+
+    #check if valid tag and set the tag
+    if (isTAG($firstword)) {
+       $retval=$firstword;
+    }
+    return($retval);
+}
+
+#given string
+#remove tag if it exists
+#return tagless line 
+sub removeTAG {
+    my ($line) = @_;
+    my $retval=$line;
+
+    # grab firstword and save the remainder
+    # use firstword to check for tag
+    my ($firstword,$therest) = split(/ /,$line,2);
+    if (isTAG($firstword)) {
+       $retval=$therest;
+    }
+    return($retval);
+}
+
+#given a reference to an array containing message information
+#create perl record of information
+#returns reference to record 
+#note: duplicate functionality to MessageToHash. test perf differences
+#so far, MessageToRecord is the winner
+sub MessageToRecord {
+    my ($msgref) = @_;
+
+    # record that contains message information 
+    # initialize to empty strings
+    my $msgrec = {
+       GROUP => "",
+       DATE => "",
+       TO => "",
+       SUBJECT => "",
+       FROM => "",
+       BODY => "",
+    };
+
+    # parse the message information
+    my $curtag="";
+    foreach(@$msgref) {
+       #get rid of newline
+       chomp($_);
+       my $tmptag=getTAG($_);
+       #set current tag value
+       if ($tmptag ne "") {
+          $curtag=$tmptag;
+       }
+
+       #fill record based on valid tag
+       #a tag is the first word of the message 
+       #with : at the end
+       #using if statements. might be faster to use hash
+       #for some performance speed up. lets see
+       if ($curtag eq GROUPSTR) { 
+          $msgrec->{GROUP} = $msgrec->{GROUP} . " " . removeTAG($_); 
+       }
+       if ($curtag eq DATESTR) { 
+          $msgrec->{DATE} = $msgrec->{DATE} . " " . removeTAG($_); 
+       }
+       if ($curtag eq TOSTR) { 
+          $msgrec->{TO} = $msgrec->{TO} . " " . removeTAG($_); 
+       }
+       if ($curtag eq SUBJECTSTR) { 
+          $msgrec->{SUBJECT} = $msgrec->{SUBJECT} . " " . removeTAG($_); 
+       } 
+       if ($curtag eq FROMSTR) { 
+          $msgrec->{FROM} = $msgrec->{FROM} . " " . removeTAG($_); 
+       }
+    }
+    return($msgrec);
+}
+
+#given a reference to an array containing header information
+#create hash of information
+#returns reference to hash 
+#note: duplicate functionality to MessageToRecord. test perf differences
+sub MessageToHash {
     my ($headerref) = @_;
-    print(@$headerref);
+
+    # record that contains message information 
+    # initialize to empty strings
+    my %headtable = ();
+    $headtable{GROUPSTR} = "";
+    $headtable{DATESTR} = "";
+    $headtable{TOSTR} = "";
+    $headtable{SUBJECTSTR} = "";
+    $headtable{FROMSTR} = "";
+
+    # parse the header information
+    my $curtag="";
+    foreach(@$headerref) {
+       
+       my $tmptag=getTAG($_);
+       #set current tag value
+       if ($tmptag ne "") {
+          $curtag=$tmptag;
+       }
+
+       #fill hash based on valid tag
+       #a tag is the first word of the header 
+       #with : at the end
+       if (exists $headtable{$curtag}) {
+          $headtable{$curtag} = $headtable{$curtag} . " " . removeTAG($_);
+          print("$curtag\n")
+       } 
+    }
+    return(\%headtable);
 }
 
 # given a hash table reference, 
@@ -135,12 +289,10 @@ sub processArchiveMessages {
     foreach my $curgroup (keys %$href) {
        my $msglistref = $nntp->listgroup($curgroup);
        # returns undefined if news group doesn't exist
-       my $numrecs=0;
        if (defined($msglistref)) {
           #get the actual data
           foreach(@$msglistref) {
-             my $headerinfo = $nntp->head($_);
-             insertMessage($headerinfo);
+             insertRecordToDB(MessageToRecord($nntp->head($_)));
           }
        }
     }
