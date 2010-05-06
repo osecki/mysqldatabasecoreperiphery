@@ -32,8 +32,8 @@ my $dbh;                                   # postgresql db handler
 my $dbhost="wander";                       # db hostname
 my $dbport="5432";                         # db port
 my $dbname="CS680ateam";                   # db name
-my $dbuser="dbuser";                       # db user name
-my $dbpasswd="pswd";                       # db password
+my $dbuser="sms28";                        # db user name
+my $dbpasswd="";               # db password
 
 
 # print script usage
@@ -130,11 +130,20 @@ sub doPrint {
 ### do db work here
 sub insertRecordToDB {
     my ($msgrec) = @_;
+    print("MSGNUM  - $msgrec->{MSGNUM}\n");
     print("GROUP   - $msgrec->{GROUP}\n");
     print("DATE    - $msgrec->{DATE}\n");
     print("TO      - $msgrec->{TO}\n");
     print("FROM    - $msgrec->{FROM}\n");
     print("SUBJECT - $msgrec->{SUBJECT}\n");
+    ##my $sth = $dbh->prepare("INSERT INTO public.persons (fname,lname) VALUES(?,?)");
+    ##$sth->execute("Sam","Stahlback");
+    ##$dbh->commit;
+    ##$sth = $dbh->prepare("SELECT * FROM public.persons");
+    ##$sth->execute();
+    ##while ( my @row = $sth->fetchrow_array()) {
+    ##  print("@row\n");
+    ##}
 }
 
 #given string
@@ -184,17 +193,56 @@ sub removeTAG {
     return($retval);
 }
 
+# given string
+# remove random characters that are used for delimiters
+# in TO/FROM fields
+sub removeCHARS {
+    my ($rawline) = @_;
+
+    # cleanout delimiter characters
+    $rawline =~ s/<//g;
+    $rawline =~ s/>//g;
+    $rawline =~ s/,//g;
+    $rawline =~ s/"//g;
+    $rawline =~ s/'//g;
+    $rawline =~ s/=//g;
+    #trim leading and trailing spaces
+    $rawline =~ s/^\s+//;
+    $rawline =~ s/\s+$//;
+
+    return($rawline);
+}
+
+# given TO field. clean out all unnecessary junk
+# returns only email aliases
+sub cleanTOField {
+    my ($rawline) = @_;
+    my $cleanline = "";
+
+    $rawline = removeCHARS($rawline); 
+    my @allwords = split(/ /,$rawline);
+    foreach(@allwords) {
+       # check if its a mail address
+       if ($_ =~ m/\@/) {
+          $cleanline = $cleanline . " " . $_;
+       }
+    }
+
+    return($cleanline);
+}
+
 #given a reference to an array containing message information
 #create perl record of information
 #returns reference to record 
 #note: duplicate functionality to MessageToHash. test perf differences
 #so far, MessageToRecord is the winner
 sub MessageToRecord {
-    my ($msgref) = @_;
+    my ($msgref,$msgnum) = @_;
 
     # record that contains message information 
     # initialize to empty strings
     my $msgrec = {
+       MSGNUM => $msgnum,
        GROUP => "",
        DATE => "",
        TO => "",
@@ -226,13 +274,15 @@ sub MessageToRecord {
           $msgrec->{DATE} = $msgrec->{DATE} . " " . removeTAG($_); 
        }
        if ($curtag eq TOSTR) { 
-          $msgrec->{TO} = $msgrec->{TO} . " " . removeTAG($_); 
+          my $cleanTOline = cleanTOField(removeTAG($_));
+          $msgrec->{TO} = $msgrec->{TO} . " " . $cleanTOline; 
        }
        if ($curtag eq SUBJECTSTR) { 
           $msgrec->{SUBJECT} = $msgrec->{SUBJECT} . " " . removeTAG($_); 
        } 
        if ($curtag eq FROMSTR) { 
-          $msgrec->{FROM} = $msgrec->{FROM} . " " . removeTAG($_); 
+          my $cleanFromline = cleanTOField(removeTAG($_));
+          $msgrec->{FROM} = $msgrec->{FROM} . " " . $cleanFromline; 
        }
     }
     return($msgrec);
@@ -292,7 +342,7 @@ sub processArchiveMessages {
        if (defined($msglistref)) {
           #get the actual data
           foreach(@$msglistref) {
-             insertRecordToDB(MessageToRecord($nntp->head($_)));
+             insertRecordToDB(MessageToRecord($nntp->head($_),$_));
           }
        }
     }
@@ -322,7 +372,7 @@ if ($printonly) {
    doPrint($grphashref);
 } else {
    # setup db connection
-   ### $dbh = DBI->connect("DBI:PgPP:dbname=$dbname;host=$dbhost;port=$dbport",$dbuser,$dbpasswd);
+   ##$dbh = DBI->connect("DBI:PgPP:dbname=$dbname;host=$dbhost;port=$dbport",$dbuser,$dbpasswd);
 
    # process messages
    processArchiveMessages($grphashref);
