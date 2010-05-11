@@ -22,6 +22,7 @@ use constant DATESTR => 'Date:';
 use constant TOSTR => 'To:';
 use constant SUBJECTSTR => 'Subject:';
 use constant FROMSTR => 'From:';
+use constant CCSTR => 'Cc:';
 
 #initialize global variables
 my $newshost = "lists.mysql.com";          # hard coded news host
@@ -136,6 +137,8 @@ sub insertRecordToDB {
     print("DATE    - $msgrec->{DATE}\n");
     print("TO      - $msgrec->{TO}\n");
     print("FROM    - $msgrec->{FROM}\n");
+    print("FNAME   - $msgrec->{FNAME}\n");
+    print("LNAME   - $msgrec->{LNAME}\n");
     print("SUBJECT - $msgrec->{SUBJECT}\n");
     ##my $sth = $dbh->prepare("INSERT INTO public.persons (fname,lname) VALUES(?,?)");
     ##$sth->execute("Sam","Stahlback");
@@ -203,7 +206,7 @@ sub removeCHARS {
     # cleanout delimiter characters
     $rawline =~ s/<//g;
     $rawline =~ s/>//g;
-    $rawline =~ s/,//g;
+    $rawline =~ s/,/ /g;
     $rawline =~ s/"//g;
     $rawline =~ s/'//g;
     $rawline =~ s/=//g;
@@ -224,7 +227,7 @@ sub hashTOstring {
     my $strval = "";
     foreach(%$href) {
        if ($strval ne "") {
-          $strval = $strval . "" . $_;
+          $strval = $strval . " " . $_;
        } else {
           $strval = $_;
        }
@@ -245,8 +248,11 @@ sub cleanTOField {
        my $cleanword = removeCHARS($_);
        # check if its a mail address
        if ($cleanword =~ m/\@/) {
-          if (not exists $tmpaddressholder{$cleanword}) {
-             $tmpaddressholder{$cleanword} = "";
+          #try to avoid aliases that are just @
+          if (length($cleanword) > 1) {
+             if (not exists $tmpaddressholder{$cleanword}) {
+                $tmpaddressholder{$cleanword} = "";
+             }
           }
        }
     }
@@ -255,12 +261,43 @@ sub cleanTOField {
 }
 
 # given FROM field. clean out all unnecessary junk
-# returns only email aliases and name info
+# returns a record with the email address and an attempt
+# at the persons name. it's really just guessing but still might be
+# helpful
 sub cleanFROMField {
     my ($rawline) = @_;
     my $cleanline = removeCHARS($rawline);
+    my @allwords = split(/ /,$rawline);
+    # record that contains FROM information 
+    # initialize to empty strings
+    my $fromrec = {
+       ADDR => "",
+       FNAME => "",
+       LNAME => "",
+    };
+    foreach(@allwords) {
+       # clean out any additional spaces
+       my $cleanword = removeCHARS($_);
+       # check if its more than an initial
+       # and more than @
+       if (length($cleanword) > 1) {
+          # check if its a mail address
+          if ($cleanword =~ m/\@/) {
+             $fromrec->{ADDR} = $cleanword;
+          } else {
+             # its as good as guess as any.
+             # just grab the best string available
+             # and use it for a name
+             if ($fromrec->{FNAME} eq "") {
+                $fromrec->{FNAME} = $cleanword;
+             } elsif ($fromrec->{LNAME} eq "") {
+                $fromrec->{LNAME} = $cleanword;
+             }
+          }
+       }
+    }
 
-    return($cleanline); 
+    return($fromrec); 
 }
 
 #given a reference to an array containing message information
@@ -280,6 +317,8 @@ sub MessageToRecord {
        TO => "",
        SUBJECT => "",
        FROM => "",
+       FNAME => "",
+       LNAME => "",
        BODY => "",
     };
 
@@ -305,7 +344,7 @@ sub MessageToRecord {
        if ($curtag eq DATESTR) { 
           $msgrec->{DATE} = $msgrec->{DATE} . " " . removeTAG($_); 
        }
-       if ($curtag eq TOSTR) { 
+       if ($curtag eq TOSTR or $curtag eq CCSTR) { 
           my $cleanTOline = cleanTOField(removeTAG($_));
           $msgrec->{TO} = $msgrec->{TO} . " " . $cleanTOline; 
        }
@@ -313,48 +352,13 @@ sub MessageToRecord {
           $msgrec->{SUBJECT} = $msgrec->{SUBJECT} . " " . removeTAG($_); 
        } 
        if ($curtag eq FROMSTR) { 
-          my $cleanFromline = cleanFROMField(removeTAG($_));
-          $msgrec->{FROM} = $msgrec->{FROM} . " " . $cleanFromline; 
+          my $fromrec = cleanFROMField(removeTAG($_));
+          $msgrec->{FROM} = $msgrec->{FROM} . " " . $fromrec->{ADDR};
+          $msgrec->{FNAME} = $fromrec->{FNAME};
+          $msgrec->{LNAME} = $fromrec->{LNAME};
        }
     }
     return($msgrec);
-}
-
-#given a reference to an array containing header information
-#create hash of information
-#returns reference to hash 
-#note: duplicate functionality to MessageToRecord. test perf differences
-sub MessageToHash {
-    my ($headerref) = @_;
-
-    # record that contains message information 
-    # initialize to empty strings
-    my %headtable = ();
-    $headtable{GROUPSTR} = "";
-    $headtable{DATESTR} = "";
-    $headtable{TOSTR} = "";
-    $headtable{SUBJECTSTR} = "";
-    $headtable{FROMSTR} = "";
-
-    # parse the header information
-    my $curtag="";
-    foreach(@$headerref) {
-       
-       my $tmptag=getTAG($_);
-       #set current tag value
-       if ($tmptag ne "") {
-          $curtag=$tmptag;
-       }
-
-       #fill hash based on valid tag
-       #a tag is the first word of the header 
-       #with : at the end
-       if (exists $headtable{$curtag}) {
-          $headtable{$curtag} = $headtable{$curtag} . " " . removeTAG($_);
-          print("$curtag\n")
-       } 
-    }
-    return(\%headtable);
 }
 
 # given a hash table reference, 
