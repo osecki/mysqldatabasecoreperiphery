@@ -125,11 +125,12 @@ sub doPrint {
 }
 
 
-# given a perl record of header information 
+# given a perl record of header information and
+# an array reference with body text
 # insert into db table
 ### do db work here
 sub insertRecordToDB {
-    my ($msgrec) = @_;
+    my ($msgrec,$bodyref) = @_;
     print("MSGNUM  - $msgrec->{MSGNUM}\n");
     print("GROUP   - $msgrec->{GROUP}\n");
     print("DATE    - $msgrec->{DATE}\n");
@@ -206,6 +207,9 @@ sub removeCHARS {
     $rawline =~ s/"//g;
     $rawline =~ s/'//g;
     $rawline =~ s/=//g;
+    $rawline =~ s/\(//g;
+    $rawline =~ s/\)//g;
+    $rawline =~ s/	//g;
     #trim leading and trailing spaces
     $rawline =~ s/^\s+//;
     $rawline =~ s/\s+$//;
@@ -213,22 +217,50 @@ sub removeCHARS {
     return($rawline);
 }
 
+# given a hash table
+# builds a string of the keys seperated by space
+sub hashTOstring {
+    my ($href) = @_;
+    my $strval = "";
+    foreach(%$href) {
+       if ($strval ne "") {
+          $strval = $strval . "" . $_;
+       } else {
+          $strval = $_;
+       }
+    }
+    return($strval);
+}
+
 # given TO field. clean out all unnecessary junk
 # returns only email aliases
 sub cleanTOField {
     my ($rawline) = @_;
-    my $cleanline = "";
+    my %tmpaddressholder = ();
 
     $rawline = removeCHARS($rawline); 
     my @allwords = split(/ /,$rawline);
     foreach(@allwords) {
+       # clean out any additional spaces
+       my $cleanword = removeCHARS($_);
        # check if its a mail address
-       if ($_ =~ m/\@/) {
-          $cleanline = $cleanline . " " . $_;
+       if ($cleanword =~ m/\@/) {
+          if (not exists $tmpaddressholder{$cleanword}) {
+             $tmpaddressholder{$cleanword} = "";
+          }
        }
     }
-
+    my $cleanline= hashTOstring(\%tmpaddressholder);
     return($cleanline);
+}
+
+# given FROM field. clean out all unnecessary junk
+# returns only email aliases and name info
+sub cleanFROMField {
+    my ($rawline) = @_;
+    my $cleanline = removeCHARS($rawline);
+
+    return($cleanline); 
 }
 
 #given a reference to an array containing message information
@@ -281,7 +313,7 @@ sub MessageToRecord {
           $msgrec->{SUBJECT} = $msgrec->{SUBJECT} . " " . removeTAG($_); 
        } 
        if ($curtag eq FROMSTR) { 
-          my $cleanFromline = cleanTOField(removeTAG($_));
+          my $cleanFromline = cleanFROMField(removeTAG($_));
           $msgrec->{FROM} = $msgrec->{FROM} . " " . $cleanFromline; 
        }
     }
@@ -342,7 +374,8 @@ sub processArchiveMessages {
        if (defined($msglistref)) {
           #get the actual data
           foreach(@$msglistref) {
-             insertRecordToDB(MessageToRecord($nntp->head($_),$_));
+             my $bodyinfo = $nntp->body($_);
+             insertRecordToDB(MessageToRecord($nntp->head($_),$_),$bodyinfo);
           }
        }
     }
