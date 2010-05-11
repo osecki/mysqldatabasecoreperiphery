@@ -13,13 +13,3 @@ CREATE TABLE mails (
 	reply INTEGER,
 	message TEXT
 );
-
-CREATE TABLE ticket_mails (
-	id SERIAL PRIMARY KEY,
-	thread INTEGER NOT NULL
-		REFERENCES threads ON DELETE CASCADE,
-	ticket INTEGER NOT NULL
-		REFERENCES tickets ON DELETE CASCADE,
-
-	CONSTRAINT unique_ticket_mail UNIQUE (thread, ticket)
-);
