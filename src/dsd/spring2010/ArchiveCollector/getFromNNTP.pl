@@ -7,14 +7,26 @@
 #issues currently takes to long to grab messages. if we are grabbing 
 #100,000 messages then this might be too slow
 #20,000 messages takes 23 minutes
+#this code is a bit bloated since I think the most efficient way to
+#code this would be to create db functions directly and strip the code
+#out of this perl script. 
+# not a ton of error checking since we needed the data loaded
+# to do:
+# clean up code bloat around db functions
+# process message text
 
+# sample sql statements for my own reference
+ ## INSERT INTO public.persons (fname,lname) VALUES('foo','bar');
+ ## INSERT INTO public.aliases (person,name)  VALUES(1,'foo@bar'); 
+ ## INSERT INTO public.threads (subject) VALUES('test message');
+ ## INSERT INTO public.mails (thread,tstamp,sender,reply,message) VALUES(1,'Sun, 1 Oct 2000',1,4,'test body'); 
+ ## DELETE from public.mails;
 use strict;
 use warnings;
 use lib qw(../../../../lib);               # include local references
 use Net::NNTP; 
 use Getopt::Std;
 use DBI;
-
 
 # constants used for header TAGs
 use constant GROUPSTR => 'Newsgroups:';
@@ -34,8 +46,7 @@ my $dbhost="wander";                       # db hostname
 my $dbport="5432";                         # db port
 my $dbname="CS680ateam";                   # db name
 my $dbuser="sms28";                        # db user name
-my $dbpasswd="";               # db password
-
+my $dbpasswd="Wtj4eBKxmDeL";               # db password
 
 # print script usage
 sub Usage {
@@ -125,29 +136,378 @@ sub doPrint {
     }
 }
 
+# db function
+# given alias
+# check public.aliases if it exists
+# return id key
+# otherwise -1
+sub dbReadAliasesID {
+    my ($alias) = @_;
+    my $retval = -1;
+
+    my $statement = "select id from public.aliases where name = ?";
+    my $sth = $dbh->prepare($statement);
+    $sth->execute($alias);
+    $retval = $sth->fetchrow_array();
+    # will returned undefined if alias doesn't exist
+    if (! defined($retval) or $retval <= 0) {
+       $retval = -1;
+    }
+
+    return($retval);
+}
+
+# db function
+# given alias
+# check public.aliases for person id
+# return person id key
+# otherwise -1
+sub dbReadAliasesPersonIDbyName {
+    my ($alias) = @_;
+    my $retval = -1;
+
+    # get alias id
+    my $aliasid = dbReadAliasesID($alias);
+    if ($aliasid > 0) {
+       my $statement = "select person from public.aliases where id = ?";
+       my $sth = $dbh->prepare($statement);
+       $sth->execute($aliasid);
+       $retval = $sth->fetchrow_array();
+
+       # will returned undefined if alias doesn't exist
+       if (! defined($retval) or $retval <= 0) {
+          $retval = -1;
+       }
+    }
+
+    return($retval);
+}
+
+# db function
+# given first and lastname
+# check public.persons if it exists
+# return id key
+# otherwise -1 
+sub dbReadPersonsID {
+    my ($fname,$lname) = @_;
+    my $retval = -1;
+
+    # since we are kind of guessing what the users name is
+    # try both variations in case their alias was written different ways
+    my $statement1 = "select id from public.persons where fname = ? and lname = ?";
+    my $statement2 = "select id from public.persons where lname = ? and fname = ?";
+    my $sth = $dbh->prepare($statement1);
+    $sth->execute($fname,$lname);
+    $retval = $sth->fetchrow_array();
+
+    # try a different variation of the fname and lname
+    if (! defined($retval) or $retval le 0) {
+       $sth = $dbh->prepare($statement2);
+       $sth->execute($fname,$lname);
+       $retval = $sth->fetchrow_array();
+       # the names were not found and the variable will
+       # be undefined
+       if (! defined($retval) or $retval <= 0) {
+          $retval = -1;
+       }
+    }
+
+    return($retval);
+}
+
+# db function
+# given subject string
+# check public.threads if it exists
+# return id key
+# otherwise -1 
+sub dbReadThreadsID {
+    my ($subject) = @_;
+    my $retval = -1;
+
+    my $statement = "select id from public.threads where subject = ?";
+    my $sth = $dbh->prepare($statement);
+    $sth->execute($subject);
+    $retval = $sth->fetchrow_array();
+
+    # will returned undefined if alias doesn't exist
+    if (! defined($retval) or $retval le 0) {
+       $retval = -1;
+    }
+
+    return($retval);
+}
+
+# db function
+# given thread id 
+# check public.threads if it exists
+# return subject text 
+# otherwise "" 
+sub dbReadThreadsSubject {
+    my ($threadid) = @_;
+    my $retval = "";
+
+    my $statement = "select subject from public.threads where id = ?";
+    my $sth = $dbh->prepare($statement);
+    $sth->execute($threadid);
+    $retval = $sth->fetchrow_array();
+
+    # will returned undefined if alias doesn't exist
+    if (! defined($retval)) {
+       $retval = "";
+    }
+
+    return($retval);
+}
+
+#given alias id
+#return person id
+sub dbReadAliasesPersonIDbyID {
+    my ($aliasid) = @_;
+    my $retval = -1;
+
+    my $statement = "select person from public.aliases where id = ?";
+    my $sth = $dbh->prepare($statement);
+    $sth->execute($aliasid);
+    $retval = $sth->fetchrow_array();
+
+    # will returned undefined if alias doesn't exist
+    if (! defined($retval)) {
+       $retval = -1;
+    }
+
+    return($retval);
+}
+
+# given fname, lname, 
+# insert into db
+# returns the id returned
+sub dbInsertPerson {
+    my ($fname,$lname) = @_;
+    my $retval = -1;
+
+    # check that atleast one of them isn't empty
+    if ($fname ne "" or $lname ne "") {
+       my $statement = "INSERT INTO public.persons (fname,lname) VALUES(?,?)";
+       my $sth = $dbh->prepare($statement);
+       $sth->execute($fname,$lname);
+       $dbh->commit;
+
+       $retval = dbReadPersonsID($fname,$lname);  
+       # will returned undefined if alias doesn't exist
+       if (! defined($retval)) {
+          $retval = -1;
+       }
+    }
+
+    return($retval); 
+}
+
+# given alias, personid
+# insert into db
+# returns the id returned
+sub dbInsertAlias {
+    my ($alias,$personid) = @_;
+    my $retval = -1;
+
+    my $statement = "INSERT INTO public.aliases (person,name) VALUES(?,?)";
+    my $sth = $dbh->prepare($statement);
+    $sth->execute($personid,$alias);
+    $dbh->commit;
+
+    # check if the insert was successful
+    $retval = dbReadAliasesID($alias); 
+
+    return($retval); 
+}
+
+# given alias id and new person id 
+# set person reference to new id
+sub dbUpdateAliasPerson {
+    my ($aliasid,$newpersonid) = @_;
+    my $statement = "UPDATE public.aliases SET person = ? WHERE id = ?";
+
+    my $sth = $dbh->prepare($statement);
+    $sth->execute($newpersonid,$aliasid);
+    $dbh->commit;
+}
+
+# given subject text
+# insert into db
+# return thread id
+sub dbInsertThread {
+    my ($subject) = @_;
+
+    my $retval = dbReadThreadsID($subject);
+    if ($retval < 0) {
+       my $statement = "INSERT INTO public.threads (subject) VALUES(?)";
+       my $sth = $dbh->prepare($statement);
+       $sth->execute($subject);
+       $dbh->commit;
+
+       $retval = dbReadThreadsID($subject); 
+       # will returned undefined if alias doesn't exist
+       if (! defined($retval)) {
+          $retval = -1;
+       }
+    } 
+    return($retval);
+}
+
+# given fname, lname, from/sender address
+# try to resolve address with fname/lname
+# or if fname/lname exist, attempt to update alias key
+# returns the alias id
+sub dbInsertSender {
+    my ($fname,$lname,$alias) = @_;
+    my $retval = -1;
+
+    # grab person and alias id
+    my $personid = dbReadPersonsID($fname,$lname);
+    my $aliasid = dbReadAliasesID($alias);
+
+    if ($personid < 0 and $aliasid < 0) {
+       # niether alias or person exist  
+       $personid = dbInsertPerson($fname,$lname); 
+       $retval = dbInsertAlias($alias,$personid);
+    } elsif ($personid > 0 and $aliasid < 0) {
+       # person exists alias doesnt
+       $retval = dbInsertAlias($alias,$personid);
+    } elsif ($personid < 0 and $aliasid > 0) {
+       # person doesnt exist alias exists 
+       # if existing alias person id is empty, fill it 
+       # with new person information. otherwise, just keep 
+       # existing person reference
+       $retval = $aliasid;
+       $personid = dbReadAliasesPersonIDbyID($aliasid);
+       if ($personid < 0) {
+          $personid = dbInsertPerson($fname,$lname); 
+          dbUpdateAliasPerson($aliasid,$personid);
+       }
+    } elsif ($personid > 0 and $aliasid > 0) {
+       # person exists and alias exists       
+       # verify that personid is set to a valid id
+       $retval = $aliasid;
+       my $tmppersonid = dbReadAliasesPersonIDbyID($aliasid); 
+       if ($tmppersonid < 0) {
+          dbUpdateAliasPerson($aliasid,$personid);
+       }
+    }
+
+    return($retval);
+}
+
+# given to/reply address
+# insert db into public.aliases
+# returns id
+sub dbInsertReply {
+    my ($alias) = @_;
+    my $retval = -1;
+
+    if ($alias ne "") {
+       $retval = dbReadAliasesID($alias);
+       if ($retval < 0) {
+          # alias doesn't exist and we dont have
+          # any name information so initialize with -1
+          $retval = dbInsertAlias($alias,"-1");
+       }
+    }
+    return($retval);
+}
+
+# given thread id, date string, from/sender id, to/reply id
+# return mail id
+sub dbReadMail {
+    my ($threadid,$datestr,$senderid,$replyid) = @_;
+    my $retval = -1;
+
+    my $statement = "SELECT id from public.mails where thread = ? and tstamp = ? and sender = ? and reply = ?";
+    my $sth = $dbh->prepare($statement);
+    $sth->execute($threadid,$datestr,$senderid,$replyid);
+    $retval = $sth->fetchrow_array();
+
+    # will returned undefined if alias doesn't exist
+    if (! defined($retval)) {
+       $retval = -1;
+    }
+
+    return($retval);
+}
+ 
+# given thread id, date string, from/sender id, to/reply id
+# insert db into public.mails
+# returns id
+sub dbInsertMail {
+    my ($threadid,$datestr,$senderid,$replyid) = @_;
+
+    my $retval = dbReadMail($threadid,$datestr,$senderid,$replyid); 
+    if ($retval < 0) {
+       my $statement = "INSERT INTO public.mails (thread,tstamp,sender,reply) VALUES(?,?,?,?)";
+       my $sth = $dbh->prepare($statement);
+       $sth->execute($threadid,$datestr,$senderid,$replyid);
+       $dbh->commit;
+
+       $retval = dbReadMail($threadid,$datestr,$senderid,$replyid); 
+       # will returned undefined if alias doesn't exist
+       if (! defined($retval)) {
+          $retval = -1;
+       }
+      
+    }
+    return($retval);
+}
 
 # given a perl record of header information and
 # an array reference with body text
 # insert into db table
-### do db work here
-sub insertRecordToDB {
+sub dbInsertRecord {
     my ($msgrec,$bodyref) = @_;
-    print("MSGNUM  - $msgrec->{MSGNUM}\n");
-    print("GROUP   - $msgrec->{GROUP}\n");
-    print("DATE    - $msgrec->{DATE}\n");
-    print("TO      - $msgrec->{TO}\n");
-    print("FROM    - $msgrec->{FROM}\n");
-    print("FNAME   - $msgrec->{FNAME}\n");
-    print("LNAME   - $msgrec->{LNAME}\n");
-    print("SUBJECT - $msgrec->{SUBJECT}\n");
-    ##my $sth = $dbh->prepare("INSERT INTO public.persons (fname,lname) VALUES(?,?)");
-    ##$sth->execute("Sam","Stahlback");
-    ##$dbh->commit;
-    ##$sth = $dbh->prepare("SELECT * FROM public.persons");
-    ##$sth->execute();
-    ##while ( my @row = $sth->fetchrow_array()) {
-    ##  print("@row\n");
-    ##}
+    ###print("MSGNUM  - $msgrec->{MSGNUM}\n");
+    ###print("GROUP   - $msgrec->{GROUP}\n");
+    ###print("DATE    - $msgrec->{DATE}\n");
+    ###print("TO      - $msgrec->{TO}\n");
+    ###print("FROM    - $msgrec->{FROM}\n");
+    ###print("FNAME   - $msgrec->{FNAME}\n");
+    ###print("LNAME   - $msgrec->{LNAME}\n");
+    ###print("SUBJECT - $msgrec->{SUBJECT}\n");
+    my $fname = removeSpace($msgrec->{FNAME});
+    my $lname = removeSpace($msgrec->{LNAME});
+    my $sender = removeSpace($msgrec->{FROM});
+    my $tstamp = removeSpace($msgrec->{DATE});
+    my $subject = removeSpace($msgrec->{SUBJECT});
+
+    my $senderid = dbInsertSender($fname,$lname,$sender);
+    my $threadid = dbInsertThread($subject);
+    my @fulltolist = split(/ /,$msgrec->{TO});
+    # to list can have many aliases in the list so we need to loop through them
+    # i'm creating a record for each unique mail
+    my $replyid = -1;
+    my $mailid = -1;
+    foreach(@fulltolist) {
+       my $toaddr = removeSpace($_);
+       if ($toaddr ne "") {
+          $replyid = dbInsertReply($toaddr);
+          $mailid = dbInsertMail($threadid,$tstamp,$senderid,$replyid);
+       }
+    }
+}
+
+#given no arguments
+#sets up dummy record in public.persons with -1 id
+sub InitializeDB {
+    my $retval = -1;
+
+    my $statement = "select id from public.persons where id = ?";
+    my $sth = $dbh->prepare($statement);
+    $sth->execute("-1");
+    $retval = $sth->fetchrow_array();
+
+    # will return not defined if id not found
+    if (! defined($retval)) {
+       $statement = "INSERT INTO public.persons (id,fname,lname) VALUES(?,?,?)";
+       $sth = $dbh->prepare($statement);
+       $sth->execute("-1","dummyname","dummyname");
+       $dbh->commit;
+    }
 }
 
 #given string
@@ -198,6 +558,16 @@ sub removeTAG {
 }
 
 # given string
+# trim leading and trailing spaces
+sub removeSpace {
+   my ($rawline) = @_;
+   $rawline =~ s/^\s+//;
+   $rawline =~ s/\s+$//;
+
+   return($rawline); 
+}
+
+# given string
 # remove random characters that are used for delimiters
 # in TO/FROM fields
 sub removeCHARS {
@@ -214,8 +584,7 @@ sub removeCHARS {
     $rawline =~ s/\)//g;
     $rawline =~ s/	//g;
     #trim leading and trailing spaces
-    $rawline =~ s/^\s+//;
-    $rawline =~ s/\s+$//;
+    $rawline = removeSpace($rawline);
 
     return($rawline);
 }
@@ -300,6 +669,16 @@ sub cleanFROMField {
     return($fromrec); 
 }
 
+#give date string with format
+# Mon, 25 Sep 2000 16:50:10 +0200 (CDT)
+# return string without timezone
+sub cleanDateField {
+    my ($rawline) = @_;
+    my ($cleandate) = split('\(',$rawline);
+
+    return($cleandate);
+}
+
 #given a reference to an array containing message information
 #create perl record of information
 #returns reference to record 
@@ -342,14 +721,15 @@ sub MessageToRecord {
           $msgrec->{GROUP} = $msgrec->{GROUP} . " " . removeTAG($_); 
        }
        if ($curtag eq DATESTR) { 
-          $msgrec->{DATE} = $msgrec->{DATE} . " " . removeTAG($_); 
+          my $cleandate = cleanDateField(removeTAG($_));
+          $msgrec->{DATE} = $cleandate; 
        }
        if ($curtag eq TOSTR or $curtag eq CCSTR) { 
           my $cleanTOline = cleanTOField(removeTAG($_));
           $msgrec->{TO} = $msgrec->{TO} . " " . $cleanTOline; 
        }
        if ($curtag eq SUBJECTSTR) { 
-          $msgrec->{SUBJECT} = $msgrec->{SUBJECT} . " " . removeTAG($_); 
+          $msgrec->{SUBJECT} = $msgrec->{SUBJECT} . " " . removeTAG($_);
        } 
        if ($curtag eq FROMSTR) { 
           my $fromrec = cleanFROMField(removeTAG($_));
@@ -379,7 +759,7 @@ sub processArchiveMessages {
           #get the actual data
           foreach(@$msglistref) {
              my $bodyinfo = $nntp->body($_);
-             insertRecordToDB(MessageToRecord($nntp->head($_),$_),$bodyinfo);
+             dbInsertRecord(MessageToRecord($nntp->head($_),$_),$bodyinfo);
           }
        }
     }
@@ -409,7 +789,8 @@ if ($printonly) {
    doPrint($grphashref);
 } else {
    # setup db connection
-   ##$dbh = DBI->connect("DBI:PgPP:dbname=$dbname;host=$dbhost;port=$dbport",$dbuser,$dbpasswd);
+   $dbh = DBI->connect("DBI:PgPP:dbname=$dbname;host=$dbhost;port=$dbport",$dbuser,$dbpasswd);
+   InitializeDB();
 
    # process messages
    processArchiveMessages($grphashref);
