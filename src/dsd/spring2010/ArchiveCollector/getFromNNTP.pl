@@ -46,7 +46,7 @@ my $dbhost="wander";                       # db hostname
 my $dbport="5432";                         # db port
 my $dbname="CS680ateam";                   # db name
 my $dbuser="sms28";                        # db user name
-my $dbpasswd="Wtj4eBKxmDeL";               # db password
+my $dbpasswd="";               # db password
 
 # print script usage
 sub Usage {
