@@ -11,5 +11,6 @@ CREATE TABLE mails (
 	sender INTEGER NOT NULL
 		REFERENCES aliases ON DELETE RESTRICT,
 	reply INTEGER,
+  messageid TEXT,
 	message TEXT
 );
