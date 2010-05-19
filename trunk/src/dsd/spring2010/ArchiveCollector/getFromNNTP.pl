@@ -47,7 +47,7 @@ my $dbhost="wander";                       # db hostname
 my $dbport="5432";                         # db port
 my $dbname="CS680ateam";                   # db name
 my $dbuser="sms28";                        # db user name
-my $dbpasswd="Wtj4eBKxmDeL";               # db password
+my $dbpasswd="";               # db password
 
 # print script usage
 sub Usage {
@@ -469,7 +469,7 @@ sub dbInsertRecord {
     my ($msgrec,$bodyref) = @_;
     print("MSGNUM     - $msgrec->{MSGNUM}\n");
     print("GROUP      - $msgrec->{GROUP}\n");
-    ###print("DATE       - $msgrec->{DATE}\n");
+    print("DATE       - $msgrec->{DATE}\n");
     ###print("FROM       - $msgrec->{FROM}\n");
     ###print("FNAME      - $msgrec->{FNAME}\n");
     ###print("LNAME      - $msgrec->{LNAME}\n");
@@ -478,10 +478,12 @@ sub dbInsertRecord {
     ###print("MESSAGEID  - $msgrec->{MESSAGEID}\n");
     ###print("SUBJECT    - $msgrec->{SUBJECT}\n");
 
-    my $senderid = dbInsertSender($msgrec->{FNAME},$msgrec->{LNAME},$msgrec->{FROM});
-    my $threadid = dbInsertThread($msgrec->{SUBJECT});
-    my $replytoid = dbReadReplyTo($msgrec->{REPLYTO});
-    my $mailid = dbInsertMail($threadid,$msgrec->{DATE},$senderid,$replytoid,$msgrec->{MESSAGEID});
+    if ($msgrec->{DATE} ne NULLSTR and $msgrec->{GROUP} ne NULLSTR) {
+       my $senderid = dbInsertSender($msgrec->{FNAME},$msgrec->{LNAME},$msgrec->{FROM});
+       my $threadid = dbInsertThread($msgrec->{SUBJECT});
+       my $replytoid = dbReadReplyTo($msgrec->{REPLYTO});
+       my $mailid = dbInsertMail($threadid,$msgrec->{DATE},$senderid,$replytoid,$msgrec->{MESSAGEID});
+    }
 }
 
 #given string
@@ -504,8 +506,10 @@ sub isTAG {
 #otherwise, return empty string;
 #a tagged line is if the first word has :
 sub getTAG {
-    my ($line) = @_;
-    my ($firstword) = split(/ /,$line);
+    my ($rawline) = @_;
+    $rawline =~ s/	/ /g;
+    $rawline =~ s/:/: /g;
+    my ($firstword) = split(/ /,$rawline);
     my $retval="";
 
     #check if valid tag and set the tag
@@ -519,12 +523,13 @@ sub getTAG {
 #remove tag if it exists
 #return tagless line 
 sub removeTAG {
-    my ($line) = @_;
-    my $retval=$line;
+    my ($rawline) = @_;
+    my $retval=$rawline;
 
     # grab firstword and save the remainder
     # use firstword to check for tag
-    my ($firstword,$therest) = split(/ /,$line,2);
+    $rawline =~ s/	/ /g;
+    my ($firstword,$therest) = split(/ /,$rawline,2);
     if (isTAG($firstword)) {
        $retval=$therest;
     }
@@ -769,11 +774,7 @@ sub cleanDATE {
 
     my @dateinfo = split(/ /,$rawline);
 
-    if (@dateinfo > 5) {
-       $retval = "$dateinfo[1] $dateinfo[2] $dateinfo[3] $dateinfo[4]";
-    } else {
-       $retval = "$dateinfo[0] $dateinfo[1] $dateinfo[2] $dateinfo[3]";
-    }
+    $retval = "$dateinfo[0] $dateinfo[1] $dateinfo[2] $dateinfo[3]";
 
     return($retval);
 }

@@ -22,7 +22,7 @@ my $newshost = "lists.mysql.com";          # hard coded news host
 my $nntp = Net::NNTP->new($newshost);      # open connection to news host
 #  hardcode these two variables to test a single message
 my $thegroup = "mysql.internals";
-my $msgnum = "37878";
+my $msgnum = "15107";
 
 #given string
 #returns true if the line is a tagged line
@@ -52,7 +52,8 @@ sub cleanDateField {
     if ($rawline =~ m/\(/) {
        ($rawline, $junk) = split(/\(/,$rawline);
     }
- 
+
+    $rawline =~ s/,/ /g; 
     # check if day of the week is included
     if ($rawline =~ m/,/) {
        ($junk, $rawline) = split(/,/,$rawline);
@@ -75,8 +76,10 @@ sub cleanDateField {
 #otherwise, return empty string;
 #a tagged line is if the first word has :
 sub getTAG {
-    my ($line) = @_;
-    my ($firstword) = split(/ /,$line);
+    my ($rawline) = @_;
+    $rawline =~ s/	/ /g;
+    $rawline =~ s/:/: /g;
+    my ($firstword) = split(/ /,$rawline);
     my $retval="";
 
     #check if valid tag and set the tag
@@ -90,12 +93,13 @@ sub getTAG {
 #remove tag if it exists
 #return tagless line 
 sub removeTAG {
-    my ($line) = @_;
-    my $retval=$line;
+    my ($rawline) = @_;
+    $rawline =~ s/	/ /g;
+    my $retval=$rawline;
 
     # grab firstword and save the remainder
     # use firstword to check for tag
-    my ($firstword,$therest) = split(/ /,$line,2);
+    my ($firstword,$therest) = split(/ /,$rawline,2);
     if (isTAG($firstword)) {
        $retval=$therest;
     }
@@ -320,25 +324,13 @@ sub cleanDATE {
     # get rid of spaces
     $rawline = removeSPACE($rawline);
 
-    # check if there is a TZ
-    # check if day of the week is included
-    if ($rawline =~ m/\(/) {
-       ($rawline, $junk) = split(/\(/,$rawline);
-    }
-
-    # check if day of the week is included
-    if ($rawline =~ m/,/) {
-       ($junk, $rawline) = split(/,/,$rawline);
-       $rawline = removeSPACE($rawline);
-    }
+    $rawline =~ s/,/ /g;
+    $rawline =~ s/  / /g;
+    $rawline =~ s/  / /g;
 
     my @dateinfo = split(/ /,$rawline);
 
-    if (@dateinfo > 5) {
-       $retval = "$dateinfo[1] $dateinfo[2] $dateinfo[3] $dateinfo[4]";
-    } else {
-       $retval = "$dateinfo[0] $dateinfo[1] $dateinfo[2] $dateinfo[3]";
-    }
+    $retval = "$dateinfo[1] $dateinfo[2] $dateinfo[3] $dateinfo[4]";
 
     return($retval);
 }
