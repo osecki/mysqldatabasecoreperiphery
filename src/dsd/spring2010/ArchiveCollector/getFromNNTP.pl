@@ -29,12 +29,13 @@ use Getopt::Std;
 use DBI;
 
 # constants used for header TAGs
-use constant GROUPSTR => 'Newsgroups:';
-use constant DATESTR => 'Date:';
-use constant TOSTR => 'To:';
-use constant SUBJECTSTR => 'Subject:';
-use constant FROMSTR => 'From:';
-use constant CCSTR => 'Cc:';
+use constant GROUPTAG => 'Newsgroups:';
+use constant DATETAG => 'Date:';
+use constant SUBJECTTAG => 'Subject:';
+use constant FROMTAG => 'From:';
+use constant REFERENCESTAG => 'References:';
+use constant MESSAGEIDTAG => 'Message-ID:';
+use constant NULLSTR => '0NULL0';
 
 #initialize global variables
 my $newshost = "lists.mysql.com";          # hard coded news host
@@ -46,7 +47,7 @@ my $dbhost="wander";                       # db hostname
 my $dbport="5432";                         # db port
 my $dbname="CS680ateam";                   # db name
 my $dbuser="sms28";                        # db user name
-my $dbpasswd="";               # db password
+my $dbpasswd="Wtj4eBKxmDeL";               # db password
 
 # print script usage
 sub Usage {
@@ -286,7 +287,7 @@ sub dbInsertPerson {
     my $retval = -1;
 
     # check that atleast one of them isn't empty
-    if ($fname ne "" or $lname ne "") {
+    if ($fname ne "" and $lname ne "") {
        my $statement = "INSERT INTO public.persons (fname,lname) VALUES(?,?)";
        my $sth = $dbh->prepare($statement);
        $sth->execute($fname,$lname);
@@ -309,13 +310,15 @@ sub dbInsertAlias {
     my ($alias,$personid) = @_;
     my $retval = -1;
 
-    my $statement = "INSERT INTO public.aliases (person,name) VALUES(?,?)";
-    my $sth = $dbh->prepare($statement);
-    $sth->execute($personid,$alias);
-    $dbh->commit;
+    if ($alias ne "") {
+       my $statement = "INSERT INTO public.aliases (person,name) VALUES(?,?)";
+       my $sth = $dbh->prepare($statement);
+       $sth->execute($personid,$alias);
+       $dbh->commit;
 
-    # check if the insert was successful
-    $retval = dbReadAliasesID($alias); 
+       # check if the insert was successful
+       $retval = dbReadAliasesID($alias); 
+    }
 
     return($retval); 
 }
@@ -339,15 +342,17 @@ sub dbInsertThread {
 
     my $retval = dbReadThreadsID($subject);
     if ($retval < 0) {
-       my $statement = "INSERT INTO public.threads (subject) VALUES(?)";
-       my $sth = $dbh->prepare($statement);
-       $sth->execute($subject);
-       $dbh->commit;
+       if ($subject ne "") {
+          my $statement = "INSERT INTO public.threads (subject) VALUES(?)";
+          my $sth = $dbh->prepare($statement);
+          $sth->execute($subject);
+          $dbh->commit;
 
-       $retval = dbReadThreadsID($subject); 
-       # will returned undefined if alias doesn't exist
-       if (! defined($retval)) {
-          $retval = -1;
+          $retval = dbReadThreadsID($subject); 
+          # will returned undefined if alias doesn't exist
+          if (! defined($retval)) {
+             $retval = -1;
+          }
        }
     } 
     return($retval);
@@ -396,24 +401,6 @@ sub dbInsertSender {
     return($retval);
 }
 
-# given to/reply address
-# insert db into public.aliases
-# returns id
-sub dbInsertReply {
-    my ($alias) = @_;
-    my $retval = -1;
-
-    if ($alias ne "") {
-       $retval = dbReadAliasesID($alias);
-       if ($retval < 0) {
-          # alias doesn't exist and we dont have
-          # any name information so initialize with -1
-          $retval = dbInsertAlias($alias,"-1");
-       }
-    }
-    return($retval);
-}
-
 # given thread id, date string, from/sender id, to/reply id
 # return mail id
 sub dbReadMail {
@@ -432,26 +419,45 @@ sub dbReadMail {
 
     return($retval);
 }
- 
-# given thread id, date string, from/sender id, to/reply id
+
+# given a message id string
+# return the sender id attached to the message
+sub dbReadReplyTo  {
+    my ($messageidstr) = @_;
+    my $retval = -1; 
+    my $statement = "SELECT sender from public.mails where messageid = ?";
+    my $sth = $dbh->prepare($statement);
+    $sth->execute($messageidstr);
+    $retval = $sth->fetchrow_array();
+
+    # will returned undefined if alias doesn't exist
+    if (! defined($retval)) {
+       $retval = -1;
+    }
+
+    return($retval);
+}
+
+# given thread id, date string, from/sender id, reply id, messageid
 # insert db into public.mails
 # returns id
 sub dbInsertMail {
-    my ($threadid,$datestr,$senderid,$replyid) = @_;
+    my ($threadid,$datestr,$senderid,$replytoid,$messageid) = @_;
 
-    my $retval = dbReadMail($threadid,$datestr,$senderid,$replyid); 
+    my $retval = dbReadMail($threadid,$datestr,$senderid,$replytoid,$messageid); 
     if ($retval < 0) {
-       my $statement = "INSERT INTO public.mails (thread,tstamp,sender,reply) VALUES(?,?,?,?)";
-       my $sth = $dbh->prepare($statement);
-       $sth->execute($threadid,$datestr,$senderid,$replyid);
-       $dbh->commit;
+       if ($datestr ne "") {
+          my $statement = "INSERT INTO public.mails (thread,tstamp,sender,reply,messageid) VALUES(?,?,?,?,?)";
+          my $sth = $dbh->prepare($statement);
+          $sth->execute($threadid,$datestr,$senderid,$replytoid,$messageid);
+          $dbh->commit;
 
-       $retval = dbReadMail($threadid,$datestr,$senderid,$replyid); 
-       # will returned undefined if alias doesn't exist
-       if (! defined($retval)) {
-          $retval = -1;
+          $retval = dbReadMail($threadid,$datestr,$senderid,$replytoid,$messageid); 
+          # will returned undefined if alias doesn't exist
+          if (! defined($retval)) {
+             $retval = -1;
+          }
        }
-      
     }
     return($retval);
 }
@@ -461,53 +467,21 @@ sub dbInsertMail {
 # insert into db table
 sub dbInsertRecord {
     my ($msgrec,$bodyref) = @_;
-    ###print("MSGNUM  - $msgrec->{MSGNUM}\n");
-    ###print("GROUP   - $msgrec->{GROUP}\n");
-    ###print("DATE    - $msgrec->{DATE}\n");
-    ###print("TO      - $msgrec->{TO}\n");
-    ###print("FROM    - $msgrec->{FROM}\n");
-    ###print("FNAME   - $msgrec->{FNAME}\n");
-    ###print("LNAME   - $msgrec->{LNAME}\n");
-    ###print("SUBJECT - $msgrec->{SUBJECT}\n");
-    my $fname = removeSpace($msgrec->{FNAME});
-    my $lname = removeSpace($msgrec->{LNAME});
-    my $sender = removeSpace($msgrec->{FROM});
-    my $tstamp = removeSpace($msgrec->{DATE});
-    my $subject = removeSpace($msgrec->{SUBJECT});
+    print("MSGNUM     - $msgrec->{MSGNUM}\n");
+    print("GROUP      - $msgrec->{GROUP}\n");
+    ###print("DATE       - $msgrec->{DATE}\n");
+    ###print("FROM       - $msgrec->{FROM}\n");
+    ###print("FNAME      - $msgrec->{FNAME}\n");
+    ###print("LNAME      - $msgrec->{LNAME}\n");
+    ###print("REPLYTO    - $msgrec->{REPLYTO}\n");
+    ###print("REFERENCES - $msgrec->{REFERENCES}\n");
+    ###print("MESSAGEID  - $msgrec->{MESSAGEID}\n");
+    ###print("SUBJECT    - $msgrec->{SUBJECT}\n");
 
-    my $senderid = dbInsertSender($fname,$lname,$sender);
-    my $threadid = dbInsertThread($subject);
-    my @fulltolist = split(/ /,$msgrec->{TO});
-    # to list can have many aliases in the list so we need to loop through them
-    # i'm creating a record for each unique mail
-    my $replyid = -1;
-    my $mailid = -1;
-    foreach(@fulltolist) {
-       my $toaddr = removeSpace($_);
-       if ($toaddr ne "") {
-          $replyid = dbInsertReply($toaddr);
-          $mailid = dbInsertMail($threadid,$tstamp,$senderid,$replyid);
-       }
-    }
-}
-
-#given no arguments
-#sets up dummy record in public.persons with -1 id
-sub InitializeDB {
-    my $retval = -1;
-
-    my $statement = "select id from public.persons where id = ?";
-    my $sth = $dbh->prepare($statement);
-    $sth->execute("-1");
-    $retval = $sth->fetchrow_array();
-
-    # will return not defined if id not found
-    if (! defined($retval)) {
-       $statement = "INSERT INTO public.persons (id,fname,lname) VALUES(?,?,?)";
-       $sth = $dbh->prepare($statement);
-       $sth->execute("-1","dummyname","dummyname");
-       $dbh->commit;
-    }
+    my $senderid = dbInsertSender($msgrec->{FNAME},$msgrec->{LNAME},$msgrec->{FROM});
+    my $threadid = dbInsertThread($msgrec->{SUBJECT});
+    my $replytoid = dbReadReplyTo($msgrec->{REPLYTO});
+    my $mailid = dbInsertMail($threadid,$msgrec->{DATE},$senderid,$replytoid,$msgrec->{MESSAGEID});
 }
 
 #given string
@@ -559,7 +533,7 @@ sub removeTAG {
 
 # given string
 # trim leading and trailing spaces
-sub removeSpace {
+sub removeSPACE {
    my ($rawline) = @_;
    $rawline =~ s/^\s+//;
    $rawline =~ s/\s+$//;
@@ -582,13 +556,63 @@ sub removeCHARS {
     $rawline =~ s/=//g;
     $rawline =~ s/\(//g;
     $rawline =~ s/\)//g;
+    $rawline =~ s/\?//g;
+    $rawline =~ s/\\//g;
     $rawline =~ s/	//g;
     #trim leading and trailing spaces
-    $rawline = removeSpace($rawline);
+    $rawline = removeSPACE($rawline);
 
     return($rawline);
 }
 
+# given subject text clean out space and other characters
+# returns clean line
+sub removeUNPRINTABLECHARS {
+    my ($rawline) = @_;
+
+    $rawline =~ s/\?//g;
+    $rawline =~ s/\:/ /g;
+    $rawline =~ s/\!/ /g;
+    $rawline =~ s/\Ç//g;
+    $rawline =~ s/\¿//g;
+    $rawline =~ s/\Á//g;
+    $rawline =~ s/\¦//g;
+    $rawline =~ s/\Í//g;
+    $rawline =~ s/\Æ//g;
+    $rawline =~ s/\¼//g;
+    $rawline =~ s/\ö//g;
+    $rawline =~ s/\ß//g;
+    $rawline =~ s/\Ë//g;
+    $rawline =~ s/\Ù//g;
+    $rawline =~ s/\¡//g;
+    $rawline =~ s/\¢//g;
+    $rawline =~ s/\Î//g;
+    $rawline =~ s/\È//g;
+    $rawline =~ s/\¶//g;
+    $rawline =~ s/\¡//g;
+    $rawline =~ s/\¢//g;
+    $rawline =~ s/\¹//g;
+    $rawline =~ s/\ú//g;
+    $rawline =~ s/\Ä//g;
+    $rawline =~ s/\Ú//g;
+    $rawline =~ s/\î//g;
+    $rawline =~ s/\º//g;
+    $rawline =~ s/\Ã//g;
+    $rawline =~ s/\Ä//g;
+    $rawline =~ s/\·//g;
+    $rawline =~ s/\þ//g;
+    $rawline =~ s/\ñ//g;
+    $rawline =~ s/\µ//g;
+    $rawline =~ s/\"//g;
+    $rawline =~ s/\¨//g;
+    $rawline =~ s/\'//g;
+
+    #trim leading and trailing spaces
+    $rawline = removeSPACE($rawline);
+
+    return($rawline);
+}
+ 
 # given a hash table
 # builds a string of the keys seperated by space
 sub hashTOstring {
@@ -604,38 +628,14 @@ sub hashTOstring {
     return($strval);
 }
 
-# given TO field. clean out all unnecessary junk
-# returns only email aliases
-sub cleanTOField {
-    my ($rawline) = @_;
-    my %tmpaddressholder = ();
-
-    $rawline = removeCHARS($rawline); 
-    my @allwords = split(/ /,$rawline);
-    foreach(@allwords) {
-       # clean out any additional spaces
-       my $cleanword = removeCHARS($_);
-       # check if its a mail address
-       if ($cleanword =~ m/\@/) {
-          #try to avoid aliases that are just @
-          if (length($cleanword) > 1) {
-             if (not exists $tmpaddressholder{$cleanword}) {
-                $tmpaddressholder{$cleanword} = "";
-             }
-          }
-       }
-    }
-    my $cleanline= hashTOstring(\%tmpaddressholder);
-    return($cleanline);
-}
-
 # given FROM field. clean out all unnecessary junk
 # returns a record with the email address and an attempt
 # at the persons name. it's really just guessing but still might be
 # helpful
-sub cleanFROMField {
+sub cleanFROM {
     my ($rawline) = @_;
-    my $cleanline = removeCHARS($rawline);
+    $rawline = removeTAG($rawline);
+    $rawline = removeCHARS($rawline);
     my @allwords = split(/ /,$rawline);
     # record that contains FROM information 
     # initialize to empty strings
@@ -669,14 +669,130 @@ sub cleanFROMField {
     return($fromrec); 
 }
 
+# given raw news group string
+# return clean group line
+sub cleanGROUP {
+    my ($rawline) = @_;
+    my $retval = "";
+    $rawline = removeTAG($rawline);
+    $retval = removeSPACE($rawline);
+
+    return($retval);
+}
+
+# given raw subject string
+# return clean subject line
+sub cleanSUBJECT {
+    my ($rawline) = @_;
+    my $retval = "";
+    $rawline = removeTAG($rawline);
+    $rawline = removeUNPRINTABLECHARS($rawline);
+    $retval = removeSPACE($rawline);
+
+    return($retval);
+}
+
+# given raw message id string
+# return clean message id string
+sub cleanMESSAGEID {
+    my ($rawline) = @_;
+    my $retval = "";
+    $rawline = removeTAG($rawline);
+    $rawline = removeSPACE($rawline);
+    $retval = cleanID($rawline);
+
+    return($retval);
+}
+
+# given message id format, remove characters
+# return plain message ide
+sub cleanID {
+    my ($rawline) = @_; 
+    my $retval = "";
+    $rawline =~ s/\<//g;
+    $rawline =~ s/\>//g;
+    $retval = removeSPACE($rawline);
+
+    return($retval);
+}
+
+# given raw references string
+# return clean references string
+sub cleanREFERENCES {
+    my ($rawline) = @_;
+    my $retval = "";
+    $rawline = removeTAG($rawline);
+    $retval = removeSPACE($rawline);
+
+    return($retval);
+}
+
+# given list of references
+# gets last reference in the list
+# return reference
+sub cleanREPLYTO {
+    my ($rawline) = @_;
+    my $retval = "";
+    my @listofref = split(/ /,$rawline);
+    my $numofref = @listofref;
+    $retval = $listofref[$numofref-1];
+    $retval = cleanID($retval);
+
+    return($retval);
+}
+
 #give date string with format
 # Mon, 25 Sep 2000 16:50:10 +0200 (CDT)
 # return string without timezone
-sub cleanDateField {
+sub cleanDATE {
     my ($rawline) = @_;
-    my ($cleandate) = split('\(',$rawline);
+    my $retval = "";
+    my $junk;
 
-    return($cleandate);
+    # get rid of tag
+    $rawline = removeTAG($rawline);
+
+    # get rid of spaces
+    $rawline = removeSPACE($rawline);
+
+    # check if there is a TZ
+    # check if day of the week is included
+    if ($rawline =~ m/\(/) {
+       ($rawline, $junk) = split(/\(/,$rawline); 
+    }
+ 
+    # check if day of the week is included
+    if ($rawline =~ m/,/) {
+       ($junk, $rawline) = split(/,/,$rawline);
+       $rawline = removeSPACE($rawline);
+    }
+
+    my @dateinfo = split(/ /,$rawline);
+
+    if (@dateinfo > 5) {
+       $retval = "$dateinfo[1] $dateinfo[2] $dateinfo[3] $dateinfo[4]";
+    } else {
+       $retval = "$dateinfo[0] $dateinfo[1] $dateinfo[2] $dateinfo[3]";
+    }
+
+    return($retval);
+}
+
+# given string that exists in a record field
+# and another string to be added
+# return updated string
+sub updateRECORD {
+    my ($recstr,$newstr) = @_; 
+
+    if ($newstr ne "") {
+       if ( $recstr eq NULLSTR) {
+          $recstr = $newstr;
+       } else {
+          $recstr = $recstr . " " . $newstr;
+       }
+    }
+
+    return($recstr);
 }
 
 #given a reference to an array containing message information
@@ -691,14 +807,16 @@ sub MessageToRecord {
     # initialize to empty strings
     my $msgrec = {
        MSGNUM => $msgnum,
-       GROUP => "",
-       DATE => "",
-       TO => "",
-       SUBJECT => "",
-       FROM => "",
-       FNAME => "",
-       LNAME => "",
-       BODY => "",
+       GROUP => NULLSTR,
+       DATE => NULLSTR,
+       SUBJECT => NULLSTR,
+       FROM => NULLSTR,
+       FNAME => NULLSTR,
+       LNAME => NULLSTR,
+       MESSAGEID => NULLSTR,
+       REFERENCES => NULLSTR,
+       REPLYTO => NULLSTR,
+       BODY => NULLSTR,
     };
 
     # parse the message information
@@ -717,25 +835,34 @@ sub MessageToRecord {
        #with : at the end
        #using if statements. might be faster to use hash
        #for some performance speed up. lets see
-       if ($curtag eq GROUPSTR) { 
-          $msgrec->{GROUP} = $msgrec->{GROUP} . " " . removeTAG($_); 
+       if ($curtag eq GROUPTAG) { 
+          my $cleangroup = cleanGROUP($_);
+          $msgrec->{GROUP} = updateRECORD($msgrec->{GROUP},$cleangroup);
        }
-       if ($curtag eq DATESTR) { 
-          my $cleandate = cleanDateField(removeTAG($_));
-          $msgrec->{DATE} = $cleandate; 
+       if ($curtag eq DATETAG) { 
+          my $cleandate = cleanDATE($_);
+          $msgrec->{DATE} = updateRECORD($msgrec->{DATE},$cleandate);
        }
-       if ($curtag eq TOSTR or $curtag eq CCSTR) { 
-          my $cleanTOline = cleanTOField(removeTAG($_));
-          $msgrec->{TO} = $msgrec->{TO} . " " . $cleanTOline; 
-       }
-       if ($curtag eq SUBJECTSTR) { 
-          $msgrec->{SUBJECT} = $msgrec->{SUBJECT} . " " . removeTAG($_);
+       if ($curtag eq SUBJECTTAG) { 
+          my $cleansubline = cleanSUBJECT($_);
+          $msgrec->{SUBJECT} = updateRECORD($msgrec->{SUBJECT},$cleansubline);
        } 
-       if ($curtag eq FROMSTR) { 
-          my $fromrec = cleanFROMField(removeTAG($_));
-          $msgrec->{FROM} = $msgrec->{FROM} . " " . $fromrec->{ADDR};
-          $msgrec->{FNAME} = $fromrec->{FNAME};
-          $msgrec->{LNAME} = $fromrec->{LNAME};
+       if ($curtag eq FROMTAG) { 
+          my $fromrec = cleanFROM($_);
+          $msgrec->{FROM} = updateRECORD($msgrec->{FROM},$fromrec->{ADDR});
+          $msgrec->{FNAME} = updateRECORD($msgrec->{FNAME},$fromrec->{FNAME});
+          $msgrec->{LNAME} = updateRECORD($msgrec->{LNAME},$fromrec->{LNAME});
+       }
+       if ($curtag eq MESSAGEIDTAG) { 
+           my $cleanmsgidline = cleanMESSAGEID($_);
+           $msgrec->{MESSAGEID} = updateRECORD($msgrec->{MESSAGEID},$cleanmsgidline);
+       }
+       if ($curtag eq REFERENCESTAG) { 
+           my $cleanrefsline = cleanREFERENCES($_);
+           $msgrec->{REFERENCES} = updateRECORD($msgrec->{REFERENCES},$cleanrefsline);
+           #continuously update reply to with last entry in the line
+           #this will give us the actual parent
+           $msgrec->{REPLYTO} = cleanREPLYTO($msgrec->{REFERENCES});
        }
     }
     return($msgrec);
@@ -790,7 +917,6 @@ if ($printonly) {
 } else {
    # setup db connection
    $dbh = DBI->connect("DBI:PgPP:dbname=$dbname;host=$dbhost;port=$dbport",$dbuser,$dbpasswd);
-   InitializeDB();
 
    # process messages
    processArchiveMessages($grphashref);
