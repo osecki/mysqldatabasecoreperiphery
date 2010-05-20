@@ -36,6 +36,7 @@ use constant FROMTAG => 'From:';
 use constant REFERENCESTAG => 'References:';
 use constant MESSAGEIDTAG => 'Message-ID:';
 use constant NULLSTR => '0NULL0';
+my %DAYSOFWEEK = ("mon",1,"tue",2,"wed",3,"thu",4,"fri",5,"sat",6,"sun",7,"di",8,"the",9,"wo",10,"zo",11,"ma",12,"do",13,"vr",14,"za",15);
 
 #initialize global variables
 my $newshost = "lists.mysql.com";          # hard coded news host
@@ -48,6 +49,7 @@ my $dbport="5432";                         # db port
 my $dbname="CS680ateam";                   # db name
 my $dbuser="sms28";                        # db user name
 my $dbpasswd="";               # db password
+my $startmsg=0;                            # used to skip messages
 
 # print script usage
 sub Usage {
@@ -65,6 +67,9 @@ sub Usage {
     print("		list of news groups seperated by spaces within quotes\n");
     print("	-p\n");
     print("		print the number of messages for each news group\n");
+    print("	-s\n");
+    print("	  used as an offset to skip processing any message upto this value\n");	
+    print("	  note: this value applies to all newsgroups in the list\n");	
     print("\n");
     print("	note:\n");
     print("	precedence of arguments (l, f, a)  if one or more are given\n");
@@ -611,6 +616,7 @@ sub removeUNPRINTABLECHARS {
     $rawline =~ s/\"//g;
     $rawline =~ s/\¨//g;
     $rawline =~ s/\'//g;
+    $rawline =~ s/\\//g;
 
     #trim leading and trailing spaces
     $rawline = removeSPACE($rawline);
@@ -746,6 +752,22 @@ sub cleanREPLYTO {
     return($retval);
 }
 
+# given string, check if day of the week
+# return 0 for false, 1 for true
+sub isDAYOFWEEK {
+    my ($rawline) = @_;
+    my $retval = 0;
+
+    # convert all to lower case
+    $rawline =~ tr/A-Z/a-z/;
+    $rawline = removeSPACE($rawline);
+    if (exists $DAYSOFWEEK{$rawline}) {
+       $retval = 1;
+    }
+
+    return($retval);
+}
+
 #give date string with format
 # Mon, 25 Sep 2000 16:50:10 +0200 (CDT)
 # return string without timezone
@@ -760,21 +782,17 @@ sub cleanDATE {
     # get rid of spaces
     $rawline = removeSPACE($rawline);
 
-    # check if there is a TZ
-    # check if day of the week is included
-    if ($rawline =~ m/\(/) {
-       ($rawline, $junk) = split(/\(/,$rawline); 
-    }
- 
-    # check if day of the week is included
-    if ($rawline =~ m/,/) {
-       ($junk, $rawline) = split(/,/,$rawline);
-       $rawline = removeSPACE($rawline);
-    }
+    $rawline =~ s/,/ /g;
+    $rawline =~ s/  / /g;
+    $rawline =~ s/  / /g;
 
     my @dateinfo = split(/ /,$rawline);
 
-    $retval = "$dateinfo[0] $dateinfo[1] $dateinfo[2] $dateinfo[3]";
+    if (isDAYOFWEEK($dateinfo[0])) {
+       $retval = "$dateinfo[1] $dateinfo[2] $dateinfo[3] $dateinfo[4]";
+    } else {
+       $retval = "$dateinfo[0] $dateinfo[1] $dateinfo[2] $dateinfo[3]";
+    }
 
     return($retval);
 }
@@ -886,16 +904,18 @@ sub processArchiveMessages {
        if (defined($msglistref)) {
           #get the actual data
           foreach(@$msglistref) {
-             my $bodyinfo = $nntp->body($_);
-             dbInsertRecord(MessageToRecord($nntp->head($_),$_),$bodyinfo);
+             if ($_ >= $startmsg) {
+                my $bodyinfo = $nntp->body($_);
+                dbInsertRecord(MessageToRecord($nntp->head($_),$_),$bodyinfo);
+             }
           }
        }
     }
 }
 
 # process arguments
-our($opt_a,$opt_f,$opt_l,$opt_p);
-getopts('af:l:p');
+our($opt_a,$opt_f,$opt_l,$opt_p,$opt_s);
+getopts('af:l:ps:');
    # get newsgroup information
    # returns a hash reference where the key is the news group
    # and the value is an array with:
@@ -909,6 +929,8 @@ if ($opt_f) { $grphashref=processGroupFile($opt_f); }
 if ($opt_l) { $grphashref=processGroupArgList($opt_l); } 
    #set print only option
 if ($opt_p) { $printonly=1; } 
+   #set the message to start at 
+if ($opt_s) { $startmsg=$opt_s; } 
 Usage() unless ($opt_a || $opt_f || $opt_l);
 
 # main 

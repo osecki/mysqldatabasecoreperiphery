@@ -17,12 +17,13 @@ use constant FROMTAG => 'From:';
 use constant REFERENCESTAG => 'References:';
 use constant MESSAGEIDTAG => 'Message-ID:';
 use constant NULLSTR => '0NULL0';
+my %DAYSOFWEEK = ("mon",1,"tue",2,"wed",3,"thu",4,"fri",5,"sat",6,"sun",7,"di",8,"the",9,"wo",10,"zo",11,"ma",12,"do",13,"vr",14,"za",15);
 
 my $newshost = "lists.mysql.com";          # hard coded news host
 my $nntp = Net::NNTP->new($newshost);      # open connection to news host
 #  hardcode these two variables to test a single message
 my $thegroup = "mysql.internals";
-my $msgnum = "15107";
+my $msgnum = "35108";
 
 #given string
 #returns true if the line is a tagged line
@@ -310,6 +311,22 @@ sub cleanREPLYTO {
     return($retval);
 }
 
+# given string, check if day of the week
+# return 0 for false, 1 for true
+sub isDAYOFWEEK {
+    my ($rawline) = @_;
+    my $retval = 0;
+
+    # convert all to lower case
+    $rawline =~ tr/A-Z/a-z/; 
+    $rawline = removeSPACE($rawline);
+    if (exists $DAYSOFWEEK{$rawline}) {
+       $retval = 1;
+    }
+    
+    return($retval);
+}
+
 #give date string with format
 # Mon, 25 Sep 2000 16:50:10 +0200 (CDT)
 # return string without timezone
@@ -330,8 +347,11 @@ sub cleanDATE {
 
     my @dateinfo = split(/ /,$rawline);
 
-    $retval = "$dateinfo[1] $dateinfo[2] $dateinfo[3] $dateinfo[4]";
-
+    if (isDAYOFWEEK($dateinfo[0])) {
+       $retval = "$dateinfo[1] $dateinfo[2] $dateinfo[3] $dateinfo[4]";
+    } else {
+       $retval = "$dateinfo[0] $dateinfo[1] $dateinfo[2] $dateinfo[3]";
+    }
     return($retval);
 }
 
