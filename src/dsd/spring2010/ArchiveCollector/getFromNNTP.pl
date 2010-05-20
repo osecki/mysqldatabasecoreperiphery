@@ -859,8 +859,10 @@ sub MessageToRecord {
           $msgrec->{GROUP} = updateRECORD($msgrec->{GROUP},$cleangroup);
        }
        if ($curtag eq DATETAG) { 
-          my $cleandate = cleanDATE($_);
-          $msgrec->{DATE} = updateRECORD($msgrec->{DATE},$cleandate);
+          if ($msgrec->{DATE} eq NULLSTR || $msgrec->{DATE} eq "") {
+             my $cleandate = cleanDATE($_);
+             $msgrec->{DATE} = updateRECORD($msgrec->{DATE},$cleandate);
+          }
        }
        if ($curtag eq SUBJECTTAG) { 
           my $cleansubline = cleanSUBJECT($_);

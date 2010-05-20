@@ -22,8 +22,8 @@ my %DAYSOFWEEK = ("mon",1,"tue",2,"wed",3,"thu",4,"fri",5,"sat",6,"sun",7,"di",8
 my $newshost = "lists.mysql.com";          # hard coded news host
 my $nntp = Net::NNTP->new($newshost);      # open connection to news host
 #  hardcode these two variables to test a single message
-my $thegroup = "mysql.internals";
-my $msgnum = "35108";
+my $thegroup = "mysql.bugs";
+my $msgnum = "5473";
 
 #given string
 #returns true if the line is a tagged line
@@ -411,8 +411,10 @@ if ($#ARGV >= 0) {
           $msgrec->{GROUP} = updateRECORD($msgrec->{GROUP},$cleangroup);
        }
        if ($curtag eq DATETAG) {
-          my $cleandate = cleanDATE($_);
-          $msgrec->{DATE} = updateRECORD($msgrec->{DATE},$cleandate);
+          if ($msgrec->{DATE} eq NULLSTR || $msgrec->{DATE} eq "") {
+             my $cleandate = cleanDATE($_);
+             $msgrec->{DATE} = updateRECORD($msgrec->{DATE},$cleandate);
+          }
        }
        if ($curtag eq SUBJECTTAG) {
           my $cleansubline = cleanSUBJECT($_);
