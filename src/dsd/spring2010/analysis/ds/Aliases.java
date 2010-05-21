@@ -3,24 +3,24 @@ package dsd.spring2010.analysis.ds;
 public class Aliases 
 {
 	// Private Attributes
-	private int id;
+	private int key;
 	private int person;
 	private String name;
 	
-	public Aliases(int id, int person, String name) 
+	public Aliases(int key, int person, String name) 
 	{
 		super();
-		this.id = id;
+		this.key = key;
 		this.person = person;
 		this.name = name;
 	}
 
-	public int getId() {
-		return id;
+	public int getKey() {
+		return key;
 	}
 
-	public void setId(int id) {
-		this.id = id;
+	public void setKey(int key) {
+		this.key = key;
 	}
 
 	public int getPerson() {
@@ -41,7 +41,7 @@ public class Aliases
 
 	@Override
 	public String toString() {
-		return "Aliases [id=" + id + ", name=" + name + ", person=" + person
+		return "Aliases [key=" + key + ", name=" + name + ", person=" + person
 				+ "]";
 	}
 }

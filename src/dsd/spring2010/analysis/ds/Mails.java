@@ -10,26 +10,27 @@ public class Mails
 	private Date tStamp;
 	private int sender;
 	private int reply;
+	private int key;
 	private String message;
 	
-	public Mails(int id, int thread, Date tStamp, int sender, int reply,
-			String message) 
+	public Mails(int key, int thread, Date tStamp, int sender, int reply, int id, String message) 
 	{
 		super();
-		this.id = id;
+		this.key = key;
 		this.thread = thread;
 		this.tStamp = tStamp;
 		this.sender = sender;
 		this.reply = reply;
+		this.id = id;
 		this.message = message;
 	}
 
-	public int getId() {
-		return id;
+	public int getKey() {
+		return key;
 	}
 
-	public void setId(int id) {
-		this.id = id;
+	public void setKey(int key) {
+		this.key = key;
 	}
 
 	public int getThread() {
@@ -63,6 +64,14 @@ public class Mails
 	public void setReply(int reply) {
 		this.reply = reply;
 	}
+	
+	public int getId() {
+		return id;
+	}
+
+	public void setId(int id) {
+		this.id = id;
+	}
 
 	public String getMessage() {
 		return message;
@@ -74,8 +83,8 @@ public class Mails
 
 	@Override
 	public String toString() {
-		return "Mails [id=" + id + ", message=" + message + ", reply=" + reply
-				+ ", sender=" + sender + ", tStamp=" + tStamp + ", thread="
+		return "Mails [key=" + key + ", message=" + message + ", reply=" + reply
+				+ ", sender=" + sender + ", tStamp=" + tStamp + ", key=" + key + ", thread="
 				+ thread + "]";
 	}
 }
