@@ -3,22 +3,22 @@ package dsd.spring2010.analysis.ds;
 public class Threads
 {
 	// Private Attributes
-	private int id;
+	private int key;
 	private String subject;
 	
-	public Threads(int id, String subject) 
+	public Threads(int key, String subject) 
 	{
 		super();
-		this.id = id;
+		this.key = key;
 		this.subject = subject;
 	}
 
-	public int getId() {
-		return id;
+	public int getKey() {
+		return key;
 	}
 
-	public void setId(int id) {
-		this.id = id;
+	public void setKey(int key) {
+		this.key = key;
 	}
 
 	public String getSubject() {
@@ -31,6 +31,6 @@ public class Threads
 
 	@Override
 	public String toString() {
-		return "Threads [id=" + id + ", subject=" + subject + "]";
+		return "Threads [key=" + key + ", subject=" + subject + "]";
 	}
 }

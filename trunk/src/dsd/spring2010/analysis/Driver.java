@@ -2,6 +2,8 @@
  * Jordan Osecki
  */
 package dsd.spring2010.analysis;
+import java.io.BufferedWriter;
+import java.io.FileWriter;
 import java.sql.*;
 import java.util.Properties;
 import java.util.Vector;
@@ -13,12 +15,12 @@ import dsd.spring2010.analysis.ds.*;
  */
 public class Driver
 {
-	// Attributes
+	// Table Attributes
 	public static Vector <Aliases> aliasesVector = new Vector <Aliases> ();
 	public static Vector <Mails> mailsVector = new Vector <Mails> ();
 	public static Vector <Persons> personsVector = new Vector <Persons> ();
 	public static Vector <Threads> threadsVector = new Vector <Threads> ();
-	public static Vector <TicketMails> ticketMailsVector = new Vector <TicketMails> ();
+	//public static Vector <TicketMails> ticketMailsVector = new Vector <TicketMails> ();
 	
 	/**
 	 * @param args
@@ -26,16 +28,14 @@ public class Driver
 	public static void main(String[] args)
 	{
 		// Initiate connection with the database
-		String url = "jdbc:postgresql://localhost";
-		Properties props = new Properties();
-		props.setProperty("user", "TODO");
-		props.setProperty("password","TODO");
-		props.setProperty("ssl","true");
+		String url = "jdbc:postgresql://wander.cs.drexel.edu:5432/CS680ateam";
+		String username = "jmo34";
+		String password = "pVfNP8e8KqjY";
 		Connection conn;
 		
 		try 
 		{
-			conn = DriverManager.getConnection(url, props);
+			conn = DriverManager.getConnection(url, username, password);
 		
 			// Iterate through each of the tables and pull the information from it
 			
@@ -55,7 +55,7 @@ public class Driver
 			rs = st.executeQuery("SELECT * FROM mails");
 			while (rs.next()) 
 			{
-			    Mails m = new Mails (rs.getInt(1), rs.getInt(2), rs.getDate(3), rs.getInt(4), rs.getInt(5), rs.getString(6) );
+			    Mails m = new Mails (rs.getInt(1), rs.getInt(2), rs.getDate(3), rs.getInt(4), rs.getInt(5), rs.getInt(6), rs.getString(7) );
 			    mailsVector.add(m);
 			}
 			rs.close();
@@ -84,7 +84,7 @@ public class Driver
 			st.close();
 			
 			// Get TicketMails
-			st = conn.createStatement();
+			/*st = conn.createStatement();
 			rs = st.executeQuery("SELECT * FROM ticketmails");
 			while (rs.next()) 
 			{
@@ -92,18 +92,35 @@ public class Driver
 			    ticketMailsVector.add(tm);
 			}
 			rs.close();
-			st.close();
+			st.close();*/
 		} 
 		catch (SQLException e) 
 		{
-			// TODO Auto-generated catch block
+			System.out.println("Error. Problem connecting to the database. Try again with correct parameters.");
 			e.printStackTrace();
 		}
 		
 		// Perform core-periphery analysis on the data structures
 		
-		// TODO!!!!!!!!!!!!
-		
+		// Begin to write CSV file
+		try
+		{
+		    // Create file 
+		    FileWriter fstream = new FileWriter("MYSQL-MAILINGLIST-CSV.csv");
+		    BufferedWriter out = new BufferedWriter(fstream);
+		    
+		    // Write out to the CSV in the format that NodeXL expects
+		    // TODO Figure out NodeXL format
+		    out.write("Hello World");
+		   
+		    // Close the output stream
+		    out.close();
+		}
+		catch (Exception e)
+		{
+			// Catch exception if any
+		    System.err.println("Error: " + e.getMessage());
+		}	
 	}
 
 }

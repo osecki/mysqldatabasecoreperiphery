@@ -3,24 +3,24 @@ package dsd.spring2010.analysis.ds;
 public class Persons 
 {
 	// Private Attributes
-	private int id;
+	private int key;
 	private String fName;
 	private String lName;
 	
-	public Persons(int id, String fName, String lName) 
+	public Persons(int key, String fName, String lName) 
 	{
 		super();
-		this.id = id;
+		this.key = key;
 		this.fName = fName;
 		this.lName = lName;
 	}
 
-	public int getId() {
-		return id;
+	public int getKey() {
+		return key;
 	}
 
-	public void setId(int id) {
-		this.id = id;
+	public void setKey(int key) {
+		this.key = key;
 	}
 
 	public String getfName() {
@@ -41,7 +41,7 @@ public class Persons
 
 	@Override
 	public String toString() {
-		return "Persons [fName=" + fName + ", id=" + id + ", lName=" + lName
+		return "Persons [fName=" + fName + ", key=" + key + ", lName=" + lName
 				+ "]";
 	}
 }
