@@ -475,18 +475,19 @@ sub dbInsertRecord {
     print("MSGNUM     - $msgrec->{MSGNUM}\n");
     print("GROUP      - $msgrec->{GROUP}\n");
     print("DATE       - $msgrec->{DATE}\n");
-    ###print("FROM       - $msgrec->{FROM}\n");
+    print("FROM       - $msgrec->{FROM}\n");
     ###print("FNAME      - $msgrec->{FNAME}\n");
     ###print("LNAME      - $msgrec->{LNAME}\n");
-    ###print("REPLYTO    - $msgrec->{REPLYTO}\n");
-    ###print("REFERENCES - $msgrec->{REFERENCES}\n");
-    ###print("MESSAGEID  - $msgrec->{MESSAGEID}\n");
-    ###print("SUBJECT    - $msgrec->{SUBJECT}\n");
+    print("REPLYTO    - $msgrec->{REPLYTO}\n");
+    print("REFERENCES - $msgrec->{REFERENCES}\n");
+    print("MESSAGEID  - $msgrec->{MESSAGEID}\n");
+    print("SUBJECT    - $msgrec->{SUBJECT}\n");
 
-    if ($msgrec->{DATE} ne NULLSTR and $msgrec->{GROUP} ne NULLSTR) {
+    if ($msgrec->{DATE} ne NULLSTR and $msgrec->{GROUP} ne NULLSTR and $msgrec->{MESSAGEID} ne NULLSTR) {
        my $senderid = dbInsertSender($msgrec->{FNAME},$msgrec->{LNAME},$msgrec->{FROM});
        my $threadid = dbInsertThread($msgrec->{SUBJECT});
        my $replytoid = dbReadReplyTo($msgrec->{REPLYTO});
+       print("senderid / $senderid : threadid / $threadid : replytoid / $replytoid : msgid / $msgrec->{MESSAGEID}\n");
        my $mailid = dbInsertMail($threadid,$msgrec->{DATE},$senderid,$replytoid,$msgrec->{MESSAGEID});
     }
 }

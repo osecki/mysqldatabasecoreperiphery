@@ -23,7 +23,7 @@ my $newshost = "lists.mysql.com";          # hard coded news host
 my $nntp = Net::NNTP->new($newshost);      # open connection to news host
 #  hardcode these two variables to test a single message
 my $thegroup = "mysql.bugs";
-my $msgnum = "5473";
+my $msgnum = "15789";
 
 #given string
 #returns true if the line is a tagged line
