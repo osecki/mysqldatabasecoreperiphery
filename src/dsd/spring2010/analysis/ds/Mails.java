@@ -13,7 +13,7 @@ public class Mails
 	private int key;
 	private String message;
 	
-	public Mails(int key, int thread, Date tStamp, int sender, int reply, int id, String message) 
+	public Mails(int key, int thread, java.sql.Date tStamp, int sender, int reply, int id, String message) 
 	{
 		super();
 		this.key = key;

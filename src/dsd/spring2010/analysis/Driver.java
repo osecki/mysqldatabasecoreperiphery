@@ -5,7 +5,10 @@ package dsd.spring2010.analysis;
 import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.sql.*;
-import java.util.Properties;
+import java.util.Collections;
+import java.util.Hashtable;
+import java.util.Iterator;
+import java.util.Set;
 import java.util.Vector;
 import dsd.spring2010.analysis.ds.*;
 
@@ -21,6 +24,8 @@ public class Driver
 	public static Vector <Persons> personsVector = new Vector <Persons> ();
 	public static Vector <Threads> threadsVector = new Vector <Threads> ();
 	//public static Vector <TicketMails> ticketMailsVector = new Vector <TicketMails> ();
+	
+	public static Hashtable<String, Integer> edges = new Hashtable<String, Integer>();
 	
 	/**
 	 * @param args
@@ -100,18 +105,55 @@ public class Driver
 			e.printStackTrace();
 		}
 		
+		
 		// Perform core-periphery analysis on the data structures
 		
-		// Begin to write CSV file
+		// Build Data Structure Needed to print
+		int n = 0;
+		Vector<Integer> nSeen = new Vector<Integer>();
+		for (int i = 0; i < mailsVector.size(); i++)
+		{
+			if ( mailsVector.elementAt(i).getReply() != -1 && mailsVector.elementAt(i).gettStamp().before(java.sql.Date.valueOf( "2010-06-03" )) )
+			{
+				// Make New Edge
+				addToHashEdgeTable(mailsVector.elementAt(i).getSender(), mailsVector.elementAt(i).getReply());
+				
+				// Update N
+				if ( nSeen.contains(mailsVector.elementAt(i).getSender()) )
+					n++;
+				if ( nSeen.contains(mailsVector.elementAt(i).getReply()) )
+					n++;
+				nSeen.add(mailsVector.elementAt(i).getSender());
+				nSeen.add(mailsVector.elementAt(i).getReply());
+			}
+		}
+		
+		// Begin to write file for UCINET
 		try
 		{
 		    // Create file 
-		    FileWriter fstream = new FileWriter("MYSQL-MAILINGLIST-CSV.csv");
+		    FileWriter fstream = new FileWriter("MYSQL-MAILINGLIST-UCINET.txt");
 		    BufferedWriter out = new BufferedWriter(fstream);
 		    
-		    // Write out to the CSV in the format that NodeXL expects
-		    // TODO Figure out NodeXL format
-		    out.write("Hello World");
+		    // Write out to the file in the format that UCINET expects
+		    
+		    // Header Info
+		    out.write("dl n = " + n + " format = edgelist1\n");
+		    out.write("labels embedded\n");
+		    out.write("data:\n");
+		    
+		    // Actual Edges
+		    //Set<String> set = edges.keySet();
+		    //Iterator<String> itr = set.iterator();
+		    
+		    // Iterate through all of the edges printing them
+		    Vector<String> tempToSort = new Vector<String>(edges.keySet());
+		    Collections.sort(tempToSort);
+		    for (int j = 0; j < tempToSort.size(); j++)
+		    {
+		    	out.write(tempToSort.elementAt(j).substring(0, tempToSort.elementAt(j).indexOf("->")) + " " + tempToSort.elementAt(j).substring(tempToSort.elementAt(j).indexOf("->") + 2) + " ");
+		    	out.write(edges.get(tempToSort.elementAt(j)) + "\n");
+		    }
 		   
 		    // Close the output stream
 		    out.close();
@@ -123,4 +165,20 @@ public class Driver
 		}	
 	}
 
+	private static void addToHashEdgeTable(int p1, int p2)
+	{
+		String testKey = p1 + "->" + p2;
+		
+		// Check if the entry exists or not
+		if ( edges.contains(testKey) )
+		{
+			int temp = edges.get(testKey);
+			temp += 1;
+			edges.put(p1 + "->" + p2, temp);
+		}
+		else
+		{
+			edges.put(p1 + "->" + p2, 1);
+		}		
+	}
 }
