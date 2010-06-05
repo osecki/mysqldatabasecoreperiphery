@@ -32,6 +32,8 @@ public class Driver
 	 */
 	public static void main(String[] args)
 	{
+		System.out.println("Test");
+		
 		// Initiate connection with the database
 		String url = "jdbc:postgresql://wander.cs.drexel.edu:5432/CS680ateam";
 		String username = "jmo34";
@@ -119,12 +121,16 @@ public class Driver
 				addToHashEdgeTable(mailsVector.elementAt(i).getSender(), mailsVector.elementAt(i).getReply());
 				
 				// Update N
-				if ( nSeen.contains(mailsVector.elementAt(i).getSender()) )
+				if ( ! nSeen.contains(mailsVector.elementAt(i).getSender()) )
+				{
 					n++;
-				if ( nSeen.contains(mailsVector.elementAt(i).getReply()) )
+					nSeen.add(mailsVector.elementAt(i).getSender());
+				}
+				if ( ! nSeen.contains(mailsVector.elementAt(i).getReply()) )
+				{
 					n++;
-				nSeen.add(mailsVector.elementAt(i).getSender());
-				nSeen.add(mailsVector.elementAt(i).getReply());
+					nSeen.add(mailsVector.elementAt(i).getReply());
+				}
 			}
 		}
 		
@@ -170,7 +176,7 @@ public class Driver
 		String testKey = p1 + "->" + p2;
 		
 		// Check if the entry exists or not
-		if ( edges.contains(testKey) )
+		if ( edges.containsKey(testKey) )
 		{
 			int temp = edges.get(testKey);
 			temp += 1;
