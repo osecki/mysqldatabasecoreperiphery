@@ -1,0 +1,102 @@
+SIMPLE CORE/PERIPHERY MODEL
+--------------------------------------------------------------------------------
+
+Input dataset:                MYSQL-UCINET-2007-09-01 (C:\Documents and Settings\Tracey Fruh\Desktop\mysqldatabasecoreperiphery\trunk\MYSQL-UCINET-2007-09-01)
+Type of data:                 Positive
+Fitness measure:              CORR
+Density of core-to-periphery ties:
+Number of iterations:         50
+Population size:              100
+Output partition:             CorePartition (C:\Documents and Settings\Tracey Fruh\My Documents\UCINET data\CorePartition)
+Output clusters:              CoreClasses (C:\Documents and Settings\Tracey Fruh\My Documents\UCINET data\CoreClasses)
+
+Starting fitness: 0.189
+Final fitness: 0.189
+
+Core/Periphery Class Memberships:
+
+    1:  5371 5948 7963 7971 8059 8081 8082 8083 8096 5765 8039 6023 6082 7977 8092 8002 8093 8026 7592 7753 8084 8087 8016 8041 8085
+    2:  8086 8088 5303 7967 8040 8065 7761 7989 6179 7945 8098 6371 6704 8100 6476 6660 6716 6662 8094 7470 7568 7921 7930 8091 8074 8028 7983 8090 8099 8089 8095
+
+Blocked Adjacency Matrix
+
+                           2 3 1 1 1 4 1 1 4 3 3 4 2 5 2 4 4   1 2 2   2 1 2 3 3 3 3 3 1 2 3 2 2 4 4 1 4 3 4 1 5 5 5 5 4 5 5  
+           1 2 3 4 5 6 7 8 3 8 1 2 3 2 5 9 5 9 5 1 1 4 6 7 9   6 4 2 9 0 8 9 0 1 2 6 4 0 5 7 7 8 3 4 7 6 3 8 4 0 1 2 3 0 5 6  
+           5 5 7 7 8 8 8 8 8 8 8 5 8 8 6 6 8 7 8 7 7 8 8 8 8   7 6 7 8 7 8 6 8 6 6 8 6 8 7 7 8 6 7 7 8 8 6 8 5 8 7 8 8 7 8 8  
+          ------------------------------------------------------------------------------------------------------------------- 
+  1 5371 |   1 1 1 1 1 1 1     1                             |       1                 1                                     |
+  2 5948 | 1                           1                     | 1                                     1       1               |
+  3 7963 | 1                                                 |             1                                                 |
+  4 7971 |                                 1 2     1         |                                     1                         |
+  5 8059 | 1                                                 |                                                               |
+  6 8081 |                                   1               |                                                               |
+  7 8082 | 1                                 1   3           |                                                               |
+  8 8083 | 1                                                 |                                                               |
+ 23 8092 |                         1     1               1   |                                                               |
+ 38 8026 |                                       1       2 1 |                                                               |
+ 11 8096 |                               2                   |                                                               |
+ 12 5765 |                         1                         |                                                               |
+ 13 8039 |         1             1   1             1     1   |           1                                       1 2 1 1     |
+ 42 8084 |                         1                 1       |                                                               |
+ 15 6023 |   1         1                                     |           1                                                   |
+ 19 6082 |                 1   3                   1         |     1   1                                                     |
+ 45 8087 |   1   1                                 1         |                                       1                       |
+ 39 7592 |   1   2   1 2                                     |                                                         1     |
+ 35 8093 |                                       2           |                                                               |
+ 41 7753 |             4 1   1   1   2         3       1     |                                                               |
+ 21 7977 |       1                         1                 |                                                               |
+ 54 8085 |                                       1           |                                                               |
+ 26 8002 |                                       1 1   1     |     1                                                         |
+ 47 8016 |             1   2 2                           1   |                                             1                 |
+ 49 8041 |                   2 1                             |                                                               |
+         ---------------------------------------------------------------------------------------------------------------------
+ 16 7967 |                                                   |           1                             1                     |
+ 24 6179 |                         1                   1     |           1               1   1                               |
+ 22 7989 |                                             1     |                                                               |
+  9 8086 |                                                   |                                                               |
+ 20 7761 |                                                   |                                                               |
+ 18 8065 |                                                   | 2 2                                                           |
+ 29 6704 |     1                                   1         |                                                               |
+ 30 8100 |                         1                         |                                 1                             |
+ 31 6476 |                                                   | 1                                                             |
+ 32 6660 |                                                   |                                           1                   |
+ 36 8094 |                                                   |                       1                                       |
+ 34 6662 |                                     1             |                     1                                         |
+ 10 8088 |                                                   |                                                               |
+ 25 7945 |                                                   |                                                               |
+ 37 7470 |                   1                               |                                                               |
+ 27 8098 |                                                   |   1                                                           |
+ 28 6371 |                                                   |             1 1                                               |
+ 43 7921 |                   1                               |                                                               |
+ 44 7930 |                                 1                 |                                                               |
+ 17 8040 |                                 1                 |                                                               |
+ 46 8091 |                                                   |                                                               |
+ 33 6716 |                                                   |                                                               |
+ 48 8074 |                                                   |                                                               |
+ 14 5303 |                                                   |                                                               |
+ 50 8028 |                                                   |   1                                                           |
+ 51 7983 |                                                   |                                                               |
+ 52 8090 |                         1                         |                                                               |
+ 53 8099 |                                                   |                                                               |
+ 40 7568 |                                                   |                                                               |
+ 55 8089 |                                                   |                                                           1   |
+ 56 8095 |                             1                     |                                                               |
+          --------------------------------------------------------------------------------------------------------------------
+
+
+
+Density matrix
+
+           1     2
+       ----- -----
+    1  0.140 0.026
+    2  0.017 0.019
+
+Partition saved as dataset    CorePartition (C:\Documents and Settings\Tracey Fruh\My Documents\UCINET data\CorePartition)
+Faction-by-actor indicator matrix saved as dataset CoreClasses (C:\Documents and Settings\Tracey Fruh\My Documents\UCINET data\CoreClasses)
+
+----------------------------------------
+Running time:  00:00:01
+Output generated:  06 Jun 10 01:03:24
+UCINET 6.283 Copyright (c) 1992-2010 Analytic Technologies
+

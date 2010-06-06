@@ -1,0 +1,86 @@
+SIMPLE CORE/PERIPHERY MODEL
+--------------------------------------------------------------------------------
+
+Input dataset:                MYSQL-UCINET-2006-07-01 (C:\Documents and Settings\Tracey Fruh\Desktop\mysqldatabasecoreperiphery\trunk\MYSQL-UCINET-2006-07-01)
+Type of data:                 Positive
+Fitness measure:              CORR
+Density of core-to-periphery ties:
+Number of iterations:         50
+Population size:              100
+Output partition:             CorePartition (C:\Documents and Settings\Tracey Fruh\My Documents\UCINET data\CorePartition)
+Output clusters:              CoreClasses (C:\Documents and Settings\Tracey Fruh\My Documents\UCINET data\CoreClasses)
+
+Starting fitness: 0.400
+Final fitness: 0.400
+
+Core/Periphery Class Memberships:
+
+    1:  5371 7832 7932 7935 7945 7753
+    2:  7919 7933 7943 7950 7952 5948 7938 7939 6023 7936 6082 6179 7768 7930 6371 7940 6478 6689 6688 7633 7592 7941 7669 7747 7944 7946 7948 7830 7927 7931 5677 7953 7937 7947
+
+Blocked Adjacency Matrix
+
+                   3             1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 1 3 3 3 3 3 3 3 3 3 4  
+           1 2 8 4 0 6   7 3 9 5 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0  
+           5 7 7 7 7 7   7 7 7 7 5 7 7 6 7 6 6 7 7 6 7 6 6 6 7 7 7 7 7 7 7 7 7 7 7 7 5 7 7 7  
+          ----------------------------------------------------------------------------------- 
+  1 5371 |   1 2 6   3 | 1 1 1 2                                       1                     |
+  2 7832 | 1 1         |                                                                     |
+  8 7945 | 2           |                                         1                           |
+  4 7932 | 5     2     |                                                                     |
+ 30 7753 |     1     1 |   1   1         1       2   3             1     1 1 4               |
+  6 7935 | 1           |                                                               1     |
+         -------------------------------------------------------------------------------------
+  7 7943 |             |                                                                     |
+  3 7919 |             |                                                                     |
+  9 7950 |             |                                                                     |
+  5 7933 |             |                                                                     |
+ 11 5948 |             |           1 1                                                       |
+ 12 7938 |             |                                                       1             |
+ 13 7939 |             |                                                                     |
+ 14 6023 |       1     |                 2                                                   |
+ 15 7936 |             |                                                                     |
+ 16 6082 |           1 |                                                                     |
+ 17 6179 |             |                       1 1                     1                     |
+ 18 7768 |             |   1                                                                 |
+ 19 7930 |         1   |                                                                     |
+ 20 6371 |             |                             1                                       |
+ 21 7940 |         2   |                           1                                         |
+ 22 6478 |   1         |                                                                     |
+ 23 6689 |             |                                   1 1                               |
+ 24 6688 |             |                                                                     |
+ 25 7633 |             |                                                                     |
+ 26 7592 |             |                                         1                           |
+ 27 7941 |             |                                                                     |
+ 28 7669 |     1       |                                                                     |
+ 29 7747 |           1 |                                                                     |
+ 10 7952 |             |                                                                     |
+ 31 7944 |         1   |                                                                     |
+ 32 7946 |             |                                                                     |
+ 33 7948 |         5   |                                                     1               |
+ 34 7830 |             |           1                                                         |
+ 35 7927 |             |                                               1                     |
+ 36 7931 |             |                                                             1       |
+ 37 5677 |             |                                                                     |
+ 38 7953 |           1 |                                                                     |
+ 39 7937 |             |                 1                                                   |
+ 40 7947 |             |                                                   1                 |
+          ------------------------------------------------------------------------------------
+
+
+
+Density matrix
+
+           1     2
+       ----- -----
+    1  0.767 0.113
+    2  0.074 0.017
+
+Partition saved as dataset    CorePartition (C:\Documents and Settings\Tracey Fruh\My Documents\UCINET data\CorePartition)
+Faction-by-actor indicator matrix saved as dataset CoreClasses (C:\Documents and Settings\Tracey Fruh\My Documents\UCINET data\CoreClasses)
+
+----------------------------------------
+Running time:  00:00:01
+Output generated:  06 Jun 10 01:07:24
+UCINET 6.283 Copyright (c) 1992-2010 Analytic Technologies
+
