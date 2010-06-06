@@ -112,8 +112,8 @@ public class Driver
 		
 		// Build Data Structure Needed to print
 		int n = 0;
-		String releaseDate = "2007-07-01";
-		String releaseDatePrevious = "2006-11-01";
+		String releaseDate = "2008-03-01";
+		String releaseDatePrevious = "2008-01-01";
 		Vector<Integer> nSeen = new Vector<Integer>();
 		for (int i = 0; i < mailsVector.size(); i++)
 		{

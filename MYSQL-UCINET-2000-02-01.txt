@@ -1,3 +1,0 @@
-dl n = 0 format = edgelist1
-labels embedded
-data:
