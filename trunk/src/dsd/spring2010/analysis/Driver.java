@@ -112,10 +112,14 @@ public class Driver
 		
 		// Build Data Structure Needed to print
 		int n = 0;
+		String releaseDate = "2007-07-01";
+		String releaseDatePrevious = "2006-11-01";
 		Vector<Integer> nSeen = new Vector<Integer>();
 		for (int i = 0; i < mailsVector.size(); i++)
 		{
-			if ( mailsVector.elementAt(i).getReply() != -1 && mailsVector.elementAt(i).gettStamp().before(java.sql.Date.valueOf( "2010-06-03" )) )
+			if ( mailsVector.elementAt(i).getReply() != -1 
+					&& mailsVector.elementAt(i).gettStamp().before(java.sql.Date.valueOf( releaseDate )) 
+					&& mailsVector.elementAt(i).gettStamp().after(java.sql.Date.valueOf( releaseDatePrevious )) )
 			{
 				// Make New Edge
 				addToHashEdgeTable(mailsVector.elementAt(i).getSender(), mailsVector.elementAt(i).getReply());
@@ -138,7 +142,7 @@ public class Driver
 		try
 		{
 		    // Create file 
-		    FileWriter fstream = new FileWriter("MYSQL-MAILINGLIST-UCINET.txt");
+		    FileWriter fstream = new FileWriter("MYSQL-UCINET-" + releaseDate + ".txt");
 		    BufferedWriter out = new BufferedWriter(fstream);
 		    
 		    // Write out to the file in the format that UCINET expects
